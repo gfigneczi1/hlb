@@ -1,12 +1,30 @@
 function evaluator_fullDriverModel(segments,config)
   
 global segment_m indexes globalStartIndex globalStopIndex vehicleState parameters metadata corFine net refFine modelID nrmsLoss nrmsLossManual dts modelMode
+
+path = [0:1:1000, zeros(1,1001)]';
+targetSpeed = 30; %kph
+vehiclePath = functional_vehicleModelTest(path, targetSpeed);
     
     %% single simulation
     parameters.P_npDistances = [0.15, 0.2, 0.25];
     %parameters.P_ELDM = reshape([2.86078399132926;0.884814215672794;-1.90657794718284;-3.09943416608130;-0.665457759838954;2.30236448840005;0.348462602099426;-0.107035325513227;-0.271014703397729;1.07959046302992;-0.775251579323662;-0.252977961446196;-0.822164501814478;1.36747233514778;0.113183483561418;-0.124241139196637;-0.454142531428492;0.293625990988783;-0.000983031283019174;-0.000983031283019174;-0.000983031283019174], 3,7);
     parameters.P_ELDM = zeros(3,7);
     parameters.P_replanCycle = 10;
+    parameters.vehicleParameters.wheelBase = 2.7;
+    parameters.vehicleParameters.r = 0.309725; 
+    parameters.vehicleParameters.c_alfaf = 8600; 
+    parameters.vehicleParameters.c_sf = 23000; 
+    parameters.vehicleParameters.c_alfar = 8600; 
+    parameters.vehicleParameters.c_sr = 23000;
+    parameters.vehicleParameters.m = 1519;
+    parameters.vehicleParameters.Jwheel = 250; 
+    parameters.vehicleParameters.J = 1818;
+    parameters.vehicleParameters.A = 1.5; 
+    parameters.vehicleParameters.c_w = 0; 
+    parameters.vehicleParameters.rho_air = 1; 
+    parameters.vehicleParameters.lf = 1; 
+    parameters.vehicleParameters.lr = 1.5; 
 
      segment = segments.segments(1).segment;
     [~, segment_m, indexes] = prepareInputForPlanner(segment);
@@ -17,55 +35,55 @@ global segment_m indexes globalStartIndex globalStopIndex vehicleState parameter
     corFine = corridorGeneration(0.5);
     refFine = referenceGeneration(0.5);
 
-%     for i=1:length(segments.segments)
-%     segment = segments.segments(i).segment;
-%     [~, segment_m, indexes] = prepareInputForPlanner(segment);
-%     
-%     globalStartIndex = 2; % minimum is 2, otherwise it fails!
-%     globalStopIndex = size(segment_m,1);
-%     
-%     %% Definition of the parameters
-%     % Planner: offset model+curve fitting model
-%     % Curve policy: none
-% 
-%     
-%     
-%     % Definition of metadata
-%     metadata.pathValidity = 1;
-%     
-%     corFine = corridorGeneration(0.5);
-%     refFine = referenceGeneration(0.5);
-%     
-%     modelID = "modifiedGroundTruth";
-%     modelMode = "kinematic";
-%     %[pathLite, U, dY, ~, intentionPathLite, vehicleStateMemory] = pathGenerationLite();
-% %     for i=2:length(vehicleStateMemory)
-% %         steeringAngle(i) = vehicleStateMemory{1,i}.steeringAngle;
-% %     end
-% %     disp(strcat('Max difference:',num2str(max(abs(pathLite(globalStartIndex:end,2)-intentionPathLite(globalStartIndex:end,2))))));
-% %     disp(strcat('Avg difference:',num2str(mean(abs(pathLite(globalStartIndex:end,2)-intentionPathLite(globalStartIndex:end,2))))));
-% %     disp(strcat('Std difference:',num2str(std(pathLite(globalStartIndex:end,2)-intentionPathLite(globalStartIndex:end,2)))));
-%     [path, U, dY, ~, intentionPath] = pathGeneration();
-%     parameters.P_ELDM = reshape(functional_driverModelLearning(U, dY ,8), 3,7);
-% 
-%     parameters_out(i).U = U;
-%     parameters_out(i).dY = dY;
-%     parameters_out(i).drID = str2num(segments.segments(i).name(3:5));
+    for i=1:length(segments.segments)
+    segment = segments.segments(i).segment;
+    [~, segment_m, indexes] = prepareInputForPlanner(segment);
+    
+    globalStartIndex = 2; % minimum is 2, otherwise it fails!
+    globalStopIndex = size(segment_m,1);
+    
+    %% Definition of the parameters
+    % Planner: offset model+curve fitting model
+    % Curve policy: none
+
+    
+    
+    % Definition of metadata
+    metadata.pathValidity = 1;
+    
+    corFine = corridorGeneration(0.5);
+    refFine = referenceGeneration(0.5);
+    
+    modelID = "modifiedGroundTruth";
+    modelMode = "dynamic";
+    %[pathLite, U, dY, ~, intentionPathLite, vehicleStateMemory] = pathGenerationLite();
+%     for i=2:length(vehicleStateMemory)
+%         steeringAngle(i) = vehicleStateMemory{1,i}.steeringAngle;
 %     end
-%     save(fullfile(config.root,"plots", 'parametersAllDrivers.mat'), 'parameters_out');
+%     disp(strcat('Max difference:',num2str(max(abs(pathLite(globalStartIndex:end,2)-intentionPathLite(globalStartIndex:end,2))))));
+%     disp(strcat('Avg difference:',num2str(mean(abs(pathLite(globalStartIndex:end,2)-intentionPathLite(globalStartIndex:end,2))))));
+%     disp(strcat('Std difference:',num2str(std(pathLite(globalStartIndex:end,2)-intentionPathLite(globalStartIndex:end,2)))));
+    [path, U, dY, ~, intentionPath] = pathGeneration();
+    parameters.P_ELDM = reshape(functional_driverModelLearning(U, dY ,8), 3,7);
+
+    parameters_out(i).U = U;
+    parameters_out(i).dY = dY;
+    parameters_out(i).drID = str2num(segments.segments(i).name(3:5));
+    end
+    save(fullfile(config.root,"plots", 'parametersAllDrivers.mat'), 'parameters_out');
     
     
-%     modelID = "eldm";
-%     parameters.P_curvePolicy(1) = 0.01;
-%     parameters.P_curvePolicy(2) = 0;
-%     parameters.P_curvePolicy(3) = 0.75;
-%     
-%     path = pathGeneration();
-% 
-%     options = optimset('PlotFcns',@optimplotfval);
-%     parameters.P_curvePolicy = fminsearch(@optimizationLoss, parameters.P_curvePolicy, options);
-% 
-%     path = pathGeneration();
+    modelID = "eldm";
+    parameters.P_curvePolicy(1) = 0.01;
+    parameters.P_curvePolicy(2) = 0;
+    parameters.P_curvePolicy(3) = 0.75;
+    
+    path = pathGeneration();
+
+    options = optimset('PlotFcns',@optimplotfval);
+    parameters.P_curvePolicy = fminsearch(@optimizationLoss, parameters.P_curvePolicy, options);
+
+    path = pathGeneration();
 
 
     %% loop simulation option for different number of node points
@@ -563,7 +581,7 @@ function [path, U, dY, plannedPath, intentionPath, vehicleStateMemory] = pathGen
             vehicleState.steeringAngle = controller(posteriorPath, vehicleState);            
             
             % vehicle model
-            vehicleState = vehicleModel(vehicleState, dT, modelMode);
+            vehicleState = vehicleModel(vehicleState, dT, modelMode, parameters.vehicleParameters);
             
             % metdata update
             metadata.pathValidity(i) = 1;
@@ -667,7 +685,7 @@ function [path, U, dY, plannedPath, intentionPath, vehicleStateMemory] = pathGen
             vehicleState.steeringAngle = controllerLite(coefficients, vehicleState, dT); 
             vehicleStateCheck.steeringAngle = vehicleState.steeringAngle;
             % vehicle model
-            vehicleState = vehicleModel(vehicleState, dT, modelMode);            
+            vehicleState = vehicleModel(vehicleState, dT, modelMode, parameters.vehicleParameters);            
 %             vehicleStateCheck = vehicleModel(vehicleStateCheck, dT, "dynamicSimplified");
 %             vehicleStateCheck = checkModelEquality(vehicleState,vehicleStateCheck);
 %             
@@ -781,145 +799,145 @@ function [c, npLocal] = transformCoefficients(X,Y,theta, origo, pose)
     end
 end
 
-function vehicleState = vehicleModel(vehicleState, dT, mode)
-if(mode == "kinematic")    
-    % kinematic bicycle model
-    % parameters
-    p_wheelBase = 2.7; % meter
-    % calculating yaw-rate based on steering angle
-    vehicleState.yawRate = tan(vehicleState.steeringAngle)/p_wheelBase * vehicleState.vx;
-    vehicleState.theta = vehicleState.theta + dT*vehicleState.yawRate;
-    % displacement
-    dX = vehicleState.vx*dT*cos(vehicleState.theta);
-    dY = vehicleState.vx*dT*sin(vehicleState.theta);
-    % new vehicle position
-    vehicleState.X = vehicleState.X+dX;
-    vehicleState.Y = vehicleState.Y+dY;
-    vehicleState.vy = 0;
-    vehicleState.ax = 0;
-    vehicleState.ay = vehicleState.vx*vehicleState.yawRate;
-    
-elseif (mode == "dynamic")    
-    % dynamic bicycle model
-    % only for high speeds
-    % inputs:
-    % - vehicleState.steeringAngle
-    % - vehicleState.M_av/M_ah - breaking forces
-    % - vehicleState.M_bv/M_bh - breaking forces
-    % parameters:
-    % r: radius of wheels in [m]
-    % c_alfav/h: lateral slip coefficient [N/rad]
-    % c_sv/h: longitudinal slip coefficient [N/%]
-    % c_w: wind coefficient
-    % rho_air: air density
-    % A: preface
-    % J: rotational intertia of the vehicle
-    % m: mass of the vehicle
-    % lv/lh: COG position from front and rear axle
-    % Jwheel: rotiational interatia of the wheels
-    r = 0.309725; c_alfaf = 76500; c_sf = 250; c_alfar = 76500; c_sr = 250;
-    m = 1519;
-    Jwheel = 250; J = 1818;
-    A = 1.5; c_w = 0; rho_air = 1; lf = 1; lr = 1.5; 
-    
-%    vehicleState.s_v = -(vehicleState.v_vx_v - r*vehicleState.drho_v)/(max(abs(vehicleState.v_vx_v), r*vehicleState.drho_v)); % longitudinal slip front, wheel coordinate frame
-    vehicleState.s_f = -(vehicleState.v_fx_v - r*vehicleState.drho_f)/(r*vehicleState.drho_f); % longitudinal slip front, wheel coordinate frame
-
-%    vehicleState.alfa_v = -vehicleState.v_vy_v /(abs(r*vehicleState.drho_v)); % lateral slip front, wheel coordinate frame
-    vehicleState.alfa_f = -vehicleState.v_fy_v /(r*vehicleState.drho_f); % lateral slip front, wheel coordinate frame
-
-%    vehicleState.s_h = -(vehicleState.v_hx_v - r*vehicleState.drho_h)/(max(abs(vehicleState.v_hx_v), r*vehicleState.drho_h)); % longitudinal slip front, wheel coordinate frame
-    vehicleState.s_r= -(vehicleState.v_rx_v - r*vehicleState.drho_r)/(r*vehicleState.drho_r); % longitudinal slip front, wheel coordinate frame
-
-%    vehicleState.alfa_h = -vehicleState.v_hy_v /(abs(r*vehicleState.drho_h)); % lateral slip front, wheel coordinate frame
-    vehicleState.alfa_r = -vehicleState.v_ry_v /(r*vehicleState.drho_r); % lateral slip front, wheel coordinate frame
-
-    vehicleState.F_fx_v = c_sf*vehicleState.s_f; % longitudinal tyre force front, wheel coordinate frame
-    vehicleState.F_fy_v = c_alfaf*vehicleState.alfa_f; % lateral tyre force front, wheel coordinate frame
-    vehicleState.F_fx = cos(vehicleState.steeringAngle)*vehicleState.F_fx_v - sin(vehicleState.steeringAngle)*vehicleState.F_fy_v; % longitudinal tyre force front, vehicle frame
-    vehicleState.F_fy = sin(vehicleState.steeringAngle)*vehicleState.F_fx_v + cos(vehicleState.steeringAngle)*vehicleState.F_fy_v; % lateral tyre force front, vehicle frame
-    vehicleState.F_rx = c_sr*vehicleState.s_r; % longitudinal tyre force, rear wheel, vehicle coordinate frame == wheel coordinate frame
-    vehicleState.F_ry = c_alfar*vehicleState.alfa_r; % lateral tyre force, rear wheel, vehicle coordinate frame == wheel coordinate frame
-    vehicleState.F_wx = 0.5*c_w*rho_air*A*vehicleState.v_fx^2;
-    vehicleState.F_wy = 0.5*c_w*rho_air*A*vehicleState.v_fy^2;
-    
-    % COG quantities    
-    vehicleState.a_x = 1/m*(vehicleState.F_fx + vehicleState.F_rx - vehicleState.F_wx);
-    vehicleState.a_y = 1/m*(vehicleState.F_fy + vehicleState.F_ry - vehicleState.F_wy);
-    
-    vehicleState.v_x = vehicleState.v_x + vehicleState.a_x*dT;
-    vehicleState.v_y = vehicleState.v_y + vehicleState.a_y*dT;
-    
-    vehicleState.eps_sigma = 1/J*(lf*vehicleState.F_fy - lr*vehicleState.F_ry);
-    vehicleState.yawRate = vehicleState.yawRate + dT*vehicleState.eps_sigma;
-    
-    % Baselink quantities
-    vehicleState.ax = vehicleState.a_x;
-    vehicleState.vx = vehicleState.v_x;
-    vehicleState.ay = vehicleState.yawRate*vehicleState.vx;
-    vehicleState.vy = 0;
-    
-    % transforming to front and rear wheel
-    vehicleState.v_fx = vehicleState.v_x;
-    vehicleState.v_fy = vehicleState.v_y + vehicleState.yawRate*lf;
-    vehicleState.v_rx = vehicleState.v_x;
-    vehicleState.v_ry = vehicleState.v_y - vehicleState.yawRate*lr;
-    
-    vehicleState.v_fx_v = cos(vehicleState.steeringAngle)*vehicleState.v_fx + sin(vehicleState.steeringAngle)*vehicleState.v_fy;
-    vehicleState.v_fy_v = -sin(vehicleState.steeringAngle)*vehicleState.v_fx + cos(vehicleState.steeringAngle)*vehicleState.v_fy;
-    vehicleState.v_rx_v = vehicleState.v_rx;
-    vehicleState.v_ry_v = vehicleState.v_ry;
-    
-    vehicleState.ddrho_f = 1/Jwheel * (vehicleState.M_af - vehicleState.M_bf)*sign(vehicleState.drho_f) - r*vehicleState.F_fx_v;
-    vehicleState.ddrho_r = 1/Jwheel * (vehicleState.M_ar - vehicleState.M_br)*sign(vehicleState.drho_r) - r*vehicleState.F_rx;
-    
-    vehicleState.drho_f = vehicleState.drho_f + vehicleState.ddrho_f*dT;
-    vehicleState.drho_r = vehicleState.drho_r + vehicleState.ddrho_r*dT;
-    
-    % absolute frame quantities
-    vehicleState.theta = vehicleState.theta + dT*vehicleState.yawRate;
-    % displacement
-    dX = vehicleState.v_rx*dT*cos(vehicleState.theta)-sin(vehicleState.theta)*vehicleState.v_ry*dT;
-    dY = vehicleState.v_rx*dT*sin(vehicleState.theta)+cos(vehicleState.theta)*vehicleState.v_ry*dT;
-    % new vehicle position
-    vehicleState.X = vehicleState.X+dX;
-    vehicleState.Y = vehicleState.Y+dY;
-    
-    vehicleState.v = (vehicleState.v_x^2 + vehicleState.v_y^2)^0.5;  
-    
-elseif (mode == "dynamicSimplified")
-    r = 0.309725; c_alfaf = 76500; c_sf = 250; c_alfar = 76500; c_sr = 250;
-    m = 1519;
-    Jwheel = 250; J = 1818;
-    lf = 1; lr = 1.5;     
-    
-    df = vehicleState.steeringAngle;
-    vehicleState.F_fx = cos(df)*(-c_sf*(cos(df)*vehicleState.v_x+sin(df)*vehicleState.v_y+sin(df)*vehicleState.yawRate*lf-r*vehicleState.drho_f)/(r*vehicleState.drho_f))+ ...
-        sin(df)*c_alfaf*(-sin(df)*vehicleState.v_x+cos(df)*vehicleState.v_y+cos(df)*vehicleState.yawRate*lf)/(r*vehicleState.drho_f);
-    vehicleState.F_fy = -sin(df)*c_sf*(cos(df)*vehicleState.v_x+sin(df)*vehicleState.v_y+sin(df)*vehicleState.yawRate*lf-r*vehicleState.drho_f)/(r*vehicleState.drho_f) - ...
-        cos(df)*c_alfaf*(-sin(df)*vehicleState.v_x+cos(df)*vehicleState.v_y+cos(df)*vehicleState.yawRate*lf)/(r*vehicleState.drho_f);
-    vehicleState.F_rx = c_sr*(-(vehicleState.v_x-r*vehicleState.drho_r)/(r*vehicleState.drho_f));
-    vehicleState.F_ry = c_alfar*(-(vehicleState.v_y-vehicleState.yawRate*lr)/(r*vehicleState.drho_r));
-    vehicleState.a_x = 1/m*(vehicleState.F_fx + vehicleState.F_rx);
-    vehicleState.a_y = 1/m*(vehicleState.F_fy + vehicleState.F_ry);
-    vehicleState.v_x = vehicleState.v_x + vehicleState.a_x*dT;
-    vehicleState.v_y = vehicleState.v_y + vehicleState.a_y*dT;
-    vehicleState.yawRate = vehicleState.yawRate + dT/J*lf*vehicleState.F_fy - dT*lr/J*vehicleState.F_ry;
-    vehicleState.drho_f = vehicleState.drho_f+dT*r*c_sf*(cos(df)*vehicleState.v_x+sin(df)*vehicleState.v_y+sin(df)*vehicleState.yawRate*lf-r*vehicleState.drho_f)/(r*vehicleState.drho_f);
-    vehicleState.drho_r = vehicleState.drho_r+r*dT*c_sr*(vehicleState.vx-r*vehicleState.drho_r)/(r*vehicleState.drho_r);
-    
-    vehicleState.theta = vehicleState.theta + vehicleState.yawRate*dT;
-    % displacement
-    v_hx = vehicleState.v_x;
-    v_hy = vehicleState.v_y - lr*vehicleState.yawRate;
-    dX = v_hx*dT*cos(vehicleState.theta)-sin(vehicleState.theta)*v_hy*dT;
-    dY = v_hx*dT*sin(vehicleState.theta)+cos(vehicleState.theta)*v_hy*dT;
-    % new vehicle position
-    vehicleState.X = vehicleState.X+dX;
-    vehicleState.Y = vehicleState.Y+dY;
-    
-end
-end
+% function vehicleState = vehicleModel(vehicleState, dT, mode)
+% if(mode == "kinematic")    
+%     % kinematic bicycle model
+%     % parameters
+%     p_wheelBase = 2.7; % meter
+%     % calculating yaw-rate based on steering angle
+%     vehicleState.yawRate = tan(vehicleState.steeringAngle)/p_wheelBase * vehicleState.vx;
+%     vehicleState.theta = vehicleState.theta + dT*vehicleState.yawRate;
+%     % displacement
+%     dX = vehicleState.vx*dT*cos(vehicleState.theta);
+%     dY = vehicleState.vx*dT*sin(vehicleState.theta);
+%     % new vehicle position
+%     vehicleState.X = vehicleState.X+dX;
+%     vehicleState.Y = vehicleState.Y+dY;
+%     vehicleState.vy = 0;
+%     vehicleState.ax = 0;
+%     vehicleState.ay = vehicleState.vx*vehicleState.yawRate;
+%     
+% elseif (mode == "dynamic")    
+%     % dynamic bicycle model
+%     % only for high speeds
+%     % inputs:
+%     % - vehicleState.steeringAngle
+%     % - vehicleState.M_av/M_ah - breaking forces
+%     % - vehicleState.M_bv/M_bh - breaking forces
+%     % parameters:
+%     % r: radius of wheels in [m]
+%     % c_alfav/h: lateral slip coefficient [N/rad]
+%     % c_sv/h: longitudinal slip coefficient [N/%]
+%     % c_w: wind coefficient
+%     % rho_air: air density
+%     % A: preface
+%     % J: rotational intertia of the vehicle
+%     % m: mass of the vehicle
+%     % lv/lh: COG position from front and rear axle
+%     % Jwheel: rotiational interatia of the wheels
+%     r = 0.309725; c_alfaf = 76500; c_sf = 250; c_alfar = 76500; c_sr = 250;
+%     m = 1519;
+%     Jwheel = 250; J = 1818;
+%     A = 1.5; c_w = 0; rho_air = 1; lf = 1; lr = 1.5; 
+%     
+% %    vehicleState.s_v = -(vehicleState.v_vx_v - r*vehicleState.drho_v)/(max(abs(vehicleState.v_vx_v), r*vehicleState.drho_v)); % longitudinal slip front, wheel coordinate frame
+%     vehicleState.s_f = -(vehicleState.v_fx_v - r*vehicleState.drho_f)/(r*vehicleState.drho_f); % longitudinal slip front, wheel coordinate frame
+% 
+% %    vehicleState.alfa_v = -vehicleState.v_vy_v /(abs(r*vehicleState.drho_v)); % lateral slip front, wheel coordinate frame
+%     vehicleState.alfa_f = -vehicleState.v_fy_v /(r*vehicleState.drho_f); % lateral slip front, wheel coordinate frame
+% 
+% %    vehicleState.s_h = -(vehicleState.v_hx_v - r*vehicleState.drho_h)/(max(abs(vehicleState.v_hx_v), r*vehicleState.drho_h)); % longitudinal slip front, wheel coordinate frame
+%     vehicleState.s_r= -(vehicleState.v_rx_v - r*vehicleState.drho_r)/(r*vehicleState.drho_r); % longitudinal slip front, wheel coordinate frame
+% 
+% %    vehicleState.alfa_h = -vehicleState.v_hy_v /(abs(r*vehicleState.drho_h)); % lateral slip front, wheel coordinate frame
+%     vehicleState.alfa_r = -vehicleState.v_ry_v /(r*vehicleState.drho_r); % lateral slip front, wheel coordinate frame
+% 
+%     vehicleState.F_fx_v = c_sf*vehicleState.s_f; % longitudinal tyre force front, wheel coordinate frame
+%     vehicleState.F_fy_v = c_alfaf*vehicleState.alfa_f; % lateral tyre force front, wheel coordinate frame
+%     vehicleState.F_fx = cos(vehicleState.steeringAngle)*vehicleState.F_fx_v - sin(vehicleState.steeringAngle)*vehicleState.F_fy_v; % longitudinal tyre force front, vehicle frame
+%     vehicleState.F_fy = sin(vehicleState.steeringAngle)*vehicleState.F_fx_v + cos(vehicleState.steeringAngle)*vehicleState.F_fy_v; % lateral tyre force front, vehicle frame
+%     vehicleState.F_rx = c_sr*vehicleState.s_r; % longitudinal tyre force, rear wheel, vehicle coordinate frame == wheel coordinate frame
+%     vehicleState.F_ry = c_alfar*vehicleState.alfa_r; % lateral tyre force, rear wheel, vehicle coordinate frame == wheel coordinate frame
+%     vehicleState.F_wx = 0.5*c_w*rho_air*A*vehicleState.v_fx^2;
+%     vehicleState.F_wy = 0.5*c_w*rho_air*A*vehicleState.v_fy^2;
+%     
+%     % COG quantities    
+%     vehicleState.a_x = 1/m*(vehicleState.F_fx + vehicleState.F_rx - vehicleState.F_wx);
+%     vehicleState.a_y = 1/m*(vehicleState.F_fy + vehicleState.F_ry - vehicleState.F_wy);
+%     
+%     vehicleState.v_x = vehicleState.v_x + vehicleState.a_x*dT;
+%     vehicleState.v_y = vehicleState.v_y + vehicleState.a_y*dT;
+%     
+%     vehicleState.eps_sigma = 1/J*(lf*vehicleState.F_fy - lr*vehicleState.F_ry);
+%     vehicleState.yawRate = vehicleState.yawRate + dT*vehicleState.eps_sigma;
+%     
+%     % Baselink quantities
+%     vehicleState.ax = vehicleState.a_x;
+%     vehicleState.vx = vehicleState.v_x;
+%     vehicleState.ay = vehicleState.yawRate*vehicleState.vx;
+%     vehicleState.vy = 0;
+%     
+%     % transforming to front and rear wheel
+%     vehicleState.v_fx = vehicleState.v_x;
+%     vehicleState.v_fy = vehicleState.v_y + vehicleState.yawRate*lf;
+%     vehicleState.v_rx = vehicleState.v_x;
+%     vehicleState.v_ry = vehicleState.v_y - vehicleState.yawRate*lr;
+%     
+%     vehicleState.v_fx_v = cos(vehicleState.steeringAngle)*vehicleState.v_fx + sin(vehicleState.steeringAngle)*vehicleState.v_fy;
+%     vehicleState.v_fy_v = -sin(vehicleState.steeringAngle)*vehicleState.v_fx + cos(vehicleState.steeringAngle)*vehicleState.v_fy;
+%     vehicleState.v_rx_v = vehicleState.v_rx;
+%     vehicleState.v_ry_v = vehicleState.v_ry;
+%     
+%     vehicleState.ddrho_f = 1/Jwheel * (vehicleState.M_af - vehicleState.M_bf)*sign(vehicleState.drho_f) - r*vehicleState.F_fx_v;
+%     vehicleState.ddrho_r = 1/Jwheel * (vehicleState.M_ar - vehicleState.M_br)*sign(vehicleState.drho_r) - r*vehicleState.F_rx;
+%     
+%     vehicleState.drho_f = vehicleState.drho_f + vehicleState.ddrho_f*dT;
+%     vehicleState.drho_r = vehicleState.drho_r + vehicleState.ddrho_r*dT;
+%     
+%     % absolute frame quantities
+%     vehicleState.theta = vehicleState.theta + dT*vehicleState.yawRate;
+%     % displacement
+%     dX = vehicleState.v_rx*dT*cos(vehicleState.theta)-sin(vehicleState.theta)*vehicleState.v_ry*dT;
+%     dY = vehicleState.v_rx*dT*sin(vehicleState.theta)+cos(vehicleState.theta)*vehicleState.v_ry*dT;
+%     % new vehicle position
+%     vehicleState.X = vehicleState.X+dX;
+%     vehicleState.Y = vehicleState.Y+dY;
+%     
+%     vehicleState.v = (vehicleState.v_x^2 + vehicleState.v_y^2)^0.5;  
+%     
+% elseif (mode == "dynamicSimplified")
+%     r = 0.309725; c_alfaf = 76500; c_sf = 250; c_alfar = 76500; c_sr = 250;
+%     m = 1519;
+%     Jwheel = 250; J = 1818;
+%     lf = 1; lr = 1.5;     
+%     
+%     df = vehicleState.steeringAngle;
+%     vehicleState.F_fx = cos(df)*(-c_sf*(cos(df)*vehicleState.v_x+sin(df)*vehicleState.v_y+sin(df)*vehicleState.yawRate*lf-r*vehicleState.drho_f)/(r*vehicleState.drho_f))+ ...
+%         sin(df)*c_alfaf*(-sin(df)*vehicleState.v_x+cos(df)*vehicleState.v_y+cos(df)*vehicleState.yawRate*lf)/(r*vehicleState.drho_f);
+%     vehicleState.F_fy = -sin(df)*c_sf*(cos(df)*vehicleState.v_x+sin(df)*vehicleState.v_y+sin(df)*vehicleState.yawRate*lf-r*vehicleState.drho_f)/(r*vehicleState.drho_f) - ...
+%         cos(df)*c_alfaf*(-sin(df)*vehicleState.v_x+cos(df)*vehicleState.v_y+cos(df)*vehicleState.yawRate*lf)/(r*vehicleState.drho_f);
+%     vehicleState.F_rx = c_sr*(-(vehicleState.v_x-r*vehicleState.drho_r)/(r*vehicleState.drho_f));
+%     vehicleState.F_ry = c_alfar*(-(vehicleState.v_y-vehicleState.yawRate*lr)/(r*vehicleState.drho_r));
+%     vehicleState.a_x = 1/m*(vehicleState.F_fx + vehicleState.F_rx);
+%     vehicleState.a_y = 1/m*(vehicleState.F_fy + vehicleState.F_ry);
+%     vehicleState.v_x = vehicleState.v_x + vehicleState.a_x*dT;
+%     vehicleState.v_y = vehicleState.v_y + vehicleState.a_y*dT;
+%     vehicleState.yawRate = vehicleState.yawRate + dT/J*lf*vehicleState.F_fy - dT*lr/J*vehicleState.F_ry;
+%     vehicleState.drho_f = vehicleState.drho_f+dT*r*c_sf*(cos(df)*vehicleState.v_x+sin(df)*vehicleState.v_y+sin(df)*vehicleState.yawRate*lf-r*vehicleState.drho_f)/(r*vehicleState.drho_f);
+%     vehicleState.drho_r = vehicleState.drho_r+r*dT*c_sr*(vehicleState.vx-r*vehicleState.drho_r)/(r*vehicleState.drho_r);
+%     
+%     vehicleState.theta = vehicleState.theta + vehicleState.yawRate*dT;
+%     % displacement
+%     v_hx = vehicleState.v_x;
+%     v_hy = vehicleState.v_y - lr*vehicleState.yawRate;
+%     dX = v_hx*dT*cos(vehicleState.theta)-sin(vehicleState.theta)*v_hy*dT;
+%     dY = v_hx*dT*sin(vehicleState.theta)+cos(vehicleState.theta)*v_hy*dT;
+%     % new vehicle position
+%     vehicleState.X = vehicleState.X+dX;
+%     vehicleState.Y = vehicleState.Y+dY;
+%     
+% end
+% end
 
 function vehicleStateCheck = checkModelEquality(vehicleState,vehicleStateCheck)
     vehicleStateCheck.F_fx_err = vehicleStateCheck.F_fx - vehicleState.F_fx;
@@ -1608,7 +1626,7 @@ end
 end
 
 function vehicleState = speedController(vehicleState)
-    setSpeed = 70 / 3.6;
+    setSpeed = 35 / 3.6;
     P = 0.1;
     speedError = setSpeed - vehicleState.vx;
     vehicleState.M_av = 0; %speedError * P;
