@@ -1,0 +1,2 @@
+class EmptyWindowsException(Exception):
+    pass

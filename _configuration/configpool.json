@@ -1,0 +1,334 @@
+{
+	"signal_profiles": [
+		{
+			"signal_profile_VW_Golf_Bp_2201_for_mapping":
+				{
+					"mf4": [
+					["ETCSignals.ES910.ES910.CAN2_ES921.ADMA.Status.Status_GNSS_Mode", "GPS_status"],
+					["ETCSignals.ES910.ES910.CAN2_ES921.ADMA.Status.Status_KF_steady_state", "KF_status"],
+					["ETCSignals.ES910.ES910.CAN1_ES921.CAN_IO_ECAN.Gateway_72.BH_Blinker_re","Right_Index"],
+					["ETCSignals.ES910.ES910.CAN1_ES921.CAN_IO_ECAN.Gateway_72.BH_Blinker_li","Left_Index"],
+					["KDP_HLB.VIL_Lite_LaneChangeOngoing","LaneChange_Approved"],
+					["KDP_HLB.time_GPS","GPS_time"],
+					["KDP_HLB.Abs_position_Long_IMU_degrees", "LongPos_abs"],
+					["KDP_HLB.Abs_position_Lat_IMU_degrees", "LatPos_abs"],
+					["KDP_HLB.LaneMapFusion.Compensator.y1_1", "c01_left"],
+					["KDP_HLB.LaneMapFusion.Compensator.y1_2", "c01_right"],
+					["KDP_HLB.c1_video", "c1"],
+					["KDP_HLB.c2_video", "c2"],
+					["KDP_HLB.LaneMapFusion.Compensator.y1_3", "c02_left"],
+					["KDP_HLB.LaneMapFusion.Compensator.y1_4", "c02_right"],
+					["KDP_HLB.ESP_HAD_RoadWheelAngle_rad", "SteeringAngle"],
+					["VmcAdas.S001_ActManLat_ECU_CSW_BB00001_1_NOINIT_RAM.V21__C_Cl23", "SteeringTorque"],
+					["KDP_HLB.ESP_acceleration_X_m_sec2", "AccelerationX_ESP"],
+					["KDP_HLB.ESP_acceleration_Y_m_sec2", "AccelerationY_ESP"],
+					["KDP_HLB.LaneMapFusion.Compensator.ESP_yawrate", "yawRateESP"],
+					["KDP_HLB.ESP_velocity_X_m_sec", "VelocityX_ESP"],
+					["ETCSignals.ES910.ES910.CAN1_ES921.CAN_IO_ECAN.MRR_TCI_03.dxPP_0_TCI", "objectDistanceFront"],
+					["ETCSignals.ES910.ES910.CAN1_ES921.CAN_IO_ECAN.MRR_TCI_04.vxPP_0_TCI", "objectVelocityFront"],
+					["ETCSignals.ES910.ES910.CAN1_ES921.CAN_IO_ECAN.MRR_TCI_04.vxPP_0_TCI", "objectAccelerationFront"]
+					],
+					"bag": [
+					[["signal1"], ["/left_lane", "Points", "X"]],
+					[["sign_aaaal2"], ["/base_waypoints", "Waypoints", "Pose", "Pose", "Position", "Y"]],
+					[["sign3"], ["/canbus", "SpeedMps"]],
+					[["signal4"], ["/gps/duro/current_pose", "Pose", "Position", "X"]],
+					[["signall5"], ["/ouster/scan", "AngleMin"]]
+					],
+					"mat": [
+					["c0_Center_Cat3", "c0_Center"],["ayvRef"],["YawRateActMeas.ActManLat.ActManLat_HADGolf", "YawRateAct"]
+					]
+				},
+			"signal_profile_VW_Golf_Bp_2205_CAN_only":
+				{
+					"mf4": [
+					["Status_GNSS_Mode", "GPS_status"],
+					["Status_KF_steady_state", "KF_status"],
+					["BH_Blinker_re","Right_Index"],
+					["BH_Blinker_li","Left_Index"],
+					["FAS_Taster","LaneChange_Approved"],
+					["GNSS_Time_msec","GPS_time"],
+					["INS_Long_Abs_POI1", "LongPos_abs"],
+					["INS_Lat_Abs_POI1", "LatPos_abs"],
+					["BV_Linie_01_dy", "c01_left"],
+					["BV_Linie_02_dy", "c01_right"],
+					["BV_Linie_03_dy", "c02_left"],
+					["BV_Linie_04_dy", "c02_right"],
+					["BV_Linie_01_Gierw_diff", "c1_orientation"],
+					["BV_Linie_02_Gierw_diff", "c2_orientation"],
+					["BV_Linie_01_hor_Kruemmung", "c1_curvature"],
+					["BV_Linie_02_hor_Kruemmung", "c2_curvature"],
+					["BV_Linie_01_dx", "c1_dx"],
+					["BV_Linie_02_dx", "c2_dx"],
+					["EPS_HAD_01_08_RoadWheelAngle", "SteeringAngle"],
+					["EPS_HAD_01_08_TorsionBarTorque", "SteeringTorque"],
+					["Vse_Raw_01_VmcVseAxVeh", "AccelerationX_ESP"],
+					["ESP_Querbeschleunigung", "AccelerationY_ESP"],
+					["ESP_Gierrate", "yawRateESP_deg_sec"],
+					["ESP_VZ_Gierrate", "yawRateESP_sign"],
+					["Vse_Raw_01_VmcVseVxVeh", "VelocityX_ESP"],
+					["dxPP_0_TCI", "objectDistanceFront"],
+					["vxPP_0_TCI", "objectVelocityFront"],
+					["asPP_0_TCI", "objectAccelerationFront"],
+					["EPS_HAD_01_08_State", "control_active"]
+					],
+					"bag": [
+					[["signal1"], ["/left_lane", "Points", "X"]],
+					[["sign_aaaal2"], ["/base_waypoints", "Waypoints", "Pose", "Pose", "Position", "Y"]],
+					[["sign3"], ["/canbus", "SpeedMps"]],
+					[["signal4"], ["/gps/duro/current_pose", "Pose", "Position", "X"]],
+					[["signall5"], ["/ouster/scan", "AngleMin"]]
+					],
+					"mat": [
+					["c0_Center_Cat3", "c0_Center"],["ayvRef"],["YawRateActMeas.ActManLat.ActManLat_HADGolf", "YawRateAct"]
+					]
+				},
+			"signal_profile_VW_Golf_Bp_2302_single_lane":
+				{
+					"mf4": [
+					["Status_GNSS_Mode", "GPS_status"],
+					["Status_KF_steady_state", "KF_status"],
+					["BH_Blinker_re","Right_Index"],
+					["BH_Blinker_li","Left_Index"],
+					["FAS_Taster","LaneChange_Approved"],
+					["GNSS_Time_msec","GPS_time"],
+					["INS_Long_Abs_POI1", "LongPos_abs"],
+					["INS_Lat_Abs_POI1", "LatPos_abs"],
+					["BV_Linie_01_dy", "c01_left"],
+					["BV_Linie_02_dy", "c01_right"],
+					["BV_Linie_03_dy", "c02_left"],
+					["BV_Linie_04_dy", "c02_right"],
+					["BV_Linie_01_Gierw_diff", "c1_orientation"],
+					["BV_Linie_02_Gierw_diff", "c2_orientation"],
+					["BV_Linie_01_hor_Kruemmung", "c1_curvature"],
+					["BV_Linie_02_hor_Kruemmung", "c2_curvature"],
+					["BV_Linie_01_dx", "c1_dx"],
+					["BV_Linie_02_dx", "c2_dx"],
+					["BV_Linie_01_Existenzmass", "cmass_01"],
+					["BV_Linie_02_Existenzmass", "cmass_02"],
+					["EPS_HAD_01_08_RoadWheelAngle", "SteeringAngle"],
+					["EPS_HAD_01_08_TorsionBarTorque", "SteeringTorque"],
+					["Vse_Raw_01_VmcVseAxVeh", "AccelerationX_ESP"],
+					["ESP_Querbeschleunigung", "AccelerationY_ESP"],
+					["ESP_Gierrate", "yawRateESP_deg_sec"],
+					["ESP_VZ_Gierrate", "yawRateESP_sign"],
+					["Vse_Raw_01_VmcVseVxVeh", "VelocityX_ESP"],
+					["dxPP_0_TCI", "objectDistanceFront"],
+					["vxPP_0_TCI", "objectVelocityFront"],
+					["asPP_0_TCI", "objectAccelerationFront"],
+					["EPS_HAD_01_08_State", "control_active"]
+					],
+					"bag": [
+					[["signal1"], ["/left_lane", "Points", "X"]],
+					[["sign_aaaal2"], ["/base_waypoints", "Waypoints", "Pose", "Pose", "Position", "Y"]],
+					[["sign3"], ["/canbus", "SpeedMps"]],
+					[["signal4"], ["/gps/duro/current_pose", "Pose", "Position", "X"]],
+					[["signall5"], ["/ouster/scan", "AngleMin"]]
+					],
+					"mat": [
+					["c0_Center_Cat3", "c0_Center"],["ayvRef"],["YawRateActMeas.ActManLat.ActManLat_HADGolf", "YawRateAct"]
+					]
+				},
+			"signal_profile_Lexus_Jkk":
+				{
+					"bag": [
+					[["X_abs_duro"], ["/lexus1/gps/duro/current_pose", "Pose", "Position", "X"]],
+					[["Y_abs_duro"], ["/lexus1/gps/duro/current_pose", "Pose", "Position", "Y"]],
+					[["VelocityX_ESP"], ["/lexus1/pacmod/parsed_tx/vehicle_speed_rpt", "VehicleSpeed"]],
+					[["GPS_time"], ["/lexus1/gps/duro/time_ref", "Header", "Stamp", "Sec"]],
+					[["GPS_status"], ["/lexus1/gps/duro/status_flag", "Data"]]
+					]
+				},
+			"signal_profile_Nissan_Leaf_Jkk_2201":
+				{
+					"bag": [
+					[["X_abs_GNSS"], ["/gnss_pose", "Pose", "Position", "X"]],
+					[["Y_abs_GNSS"], ["/gnss_pose", "Pose", "Position", "Y"]],
+					[["X_abs_duro"], ["/gps/duro/current_pose", "Pose", "Position", "X"]],
+					[["Y_abs_duro"], ["/gps/duro/current_pose", "Pose", "Position", "Y"]],
+					[["VelocityX_ESP"], ["/vehicle_status", "Speed"]],
+					[["SteeringAngle"], ["/wheel_angle_deg", "Data"]],
+					[["GPS_time"], ["/gps/duro/time_ref", "Header", "TimeStamp"]],
+					[["GPS_status"], ["/gps/duro/status_flag", "Data"]]
+					]
+				},
+			"signal_profile_VW_Golf_Bp_2211_ES910_CAN_only":
+				{
+					"mf4": [
+					["ETCSignals.ES910.ES910.CAN2_ES921.CAN_IO_ADMA.Status.Status_GNSS_Mode", "GPS_status"],
+					["ETCSignals.ES910.ES910.CAN2_ES921.CAN_IO_ADMA.Kalmanfilter_Status.KF_steady_state", "KF_status"],
+					["ETCSignals.ES910.ES910.CAN1_ES921.CAN_IO_ECAN.Gateway_72.BH_Blinker_re","Right_Index"],
+					["ETCSignals.ES910.ES910.CAN1_ES921.CAN_IO_ECAN.Gateway_72.BH_Blinker_li","Left_Index"],
+					["ETCSignals.ES910.ES910.CAN1_ES921.CAN_IO_ECAN.Gateway_76.FAS_Taster","LaneChange_Approved"],
+					["ETCSignals.ES910.ES910.CAN2_ES921.CAN_IO_ADMA.GNSS_Time_UTC.GNSS_Time_msec","GPS_time"],
+					["ETCSignals.ES910.ES910.CAN2_ES921.CAN_IO_ADMA.INS_Position_POI1_absolute.INS_Long_Abs_POI1", "LongPos_abs"],
+					["ETCSignals.ES910.ES910.CAN2_ES921.CAN_IO_ADMA.INS_Position_POI1_absolute.INS_Lat_Abs_POI1", "LatPos_abs"],
+					["ETCSignals.ES910.ES910.CAN1_ES921.CAN_IO_ECAN.BV_Linie_01.BV_Linie_01_dy", "c01_left"],
+					["ETCSignals.ES910.ES910.CAN1_ES921.CAN_IO_ECAN.BV_Linie_02.BV_Linie_02_dy", "c01_right"],
+					["ETCSignals.ES910.ES910.CAN1_ES921.CAN_IO_ECAN.BV_Linie_02.BV_Linie_03_dy", "c02_left"],
+					["ETCSignals.ES910.ES910.CAN1_ES921.CAN_IO_ECAN.BV_Linie_02.BV_Linie_04_dy", "c02_right"],
+					["ETCSignals.ES910.ES910.CAN1_ES921.CAN_IO_ECAN.BV_Linie_01.BV_Linie_01_Gierw_diff", "c1_orientation"],
+					["ETCSignals.ES910.ES910.CAN1_ES921.CAN_IO_ECAN.BV_Linie_02.BV_Linie_02_Gierw_diff", "c2_orientation"],
+					["ETCSignals.ES910.ES910.CAN1_ES921.CAN_IO_ECAN.BV_Linie_01.BV_Linie_01_hor_Kruemmung", "c1_curvature"],
+					["ETCSignals.ES910.ES910.CAN1_ES921.CAN_IO_ECAN.BV_Linie_02.BV_Linie_02_hor_Kruemmung", "c2_curvature"],
+					["ETCSignals.ES910.ES910.CAN1_ES921.CAN_IO_ECAN.BV_Linien.BV_Linie_01_dx_Vorausschau", "c1_dx"],
+					["ETCSignals.ES910.ES910.CAN1_ES921.CAN_IO_ECAN.BV_Linien.BV_Linie_02_dx_Vorausschau", "c2_dx"],
+					["ETCSignals.ES910.ES910.CAN1.CAN_IO_FCAN.EPS_HAD_Response_01.EPS_HAD_01_Mux_M8_EPS_HAD_01_08_RoadWheelAngle", "SteeringAngle"],
+					["ETCSignals.ES910.ES910.CAN1.CAN_IO_FCAN.EPS_HAD_Response_01.EPS_HAD_01_Mux_M8_EPS_HAD_01_08_TorsionBarTorque", "SteeringTorque"],
+					["ETCSignals.ES910.ES910.CAN2.CAN_IO_ACAN.VehicleStateEstimationRaw_01.Vse_Raw_01_VmcVseAxVeh", "AccelerationX_ESP"],
+					["ETCSignals.ES910.ES910.CAN1.CAN_IO_FCAN.ESP_02.ESP_Querbeschleunigung", "AccelerationY_ESP"],
+					["ETCSignals.ES910.ES910.CAN1.CAN_IO_FCAN.ESP_02.ESP_Gierrate", "yawRateESP_deg_sec"],
+					["ETCSignals.ES910.ES910.CAN1.CAN_IO_FCAN.ESP_02.ESP_VZ_Gierrate", "yawRateESP_sign"],
+					["ETCSignals.ES910.ES910.CAN2.CAN_IO_ACAN.VehicleStateEstimationRaw_01.Vse_Raw_01_VmcVseVxVeh", "VelocityX_ESP"],
+					["ETCSignals.ES910.ES910.CAN1_ES921.CAN_IO_ECAN.MRR_TCI_03.dxPP_0_TCI", "objectDistanceFront"],
+					["ETCSignals.ES910.ES910.CAN1_ES921.CAN_IO_ECAN.MRR_TCI_04.vxPP_0_TCI", "objectVelocityFront"],
+					["ETCSignals.ES910.ES910.CAN1_ES921.CAN_IO_ECAN.MRR_TCI_05.asPP_0_TCI", "objectAccelerationFront"]
+					],
+					"mat": [
+					["GPS_status", "GPS_status"],
+					["KF_status", "KF_status"],
+					["Right_Index","Right_Index"],
+					["Left_Index","Left_Index"],
+					["LaneChange_Approved","LaneChange_Approved"],
+					["GPS_time","GPS_time"],
+					["LongPos_abs", "LongPos_abs"],
+					["LatPos_abs", "LatPos_abs"],
+					["c01_left", "c01_left"],
+					["c01_right", "c01_right"],
+					["c1", "c1"],
+					["c2", "c2"],
+					["q_T0","q_T0"],
+					["SteeringAngle", "SteeringAngle"],
+					["SteeringTorque", "SteeringTorque"],
+					["AccelerationX_ESP", "AccelerationX_ESP"],
+					["AccelerationY_ESP", "AccelerationY_ESP"],
+					["yawRateESP", "yawRateESP"],
+					["VelocityX_ESP", "VelocityX_ESP"],
+					["objectDistanceFront", "objectDistanceFront"],
+					["objectVelocityFront", "objectVelocityFront"],
+					["objectAccelerationFront", "objectAccelerationFront"],
+					["laneChangeDirectionOnline","laneChangeDirectionOnline"],
+					["laneChangeStateOnline","laneChangeStateOnline"]
+					]
+				},
+			"signal_profile_VW_Golf_Bp_2211_ES910_CAN_only_PBP":
+				{
+					"mf4": [
+					["ETCSignals.ES910.ES910.CAN2_ES921.CAN_IO_ADMA.Status.Status_GNSS_Mode", "GPS_status"],
+					["ETCSignals.ES910.ES910.CAN2_ES921.CAN_IO_ADMA.Kalmanfilter_Status.KF_steady_state", "KF_status"],
+					["ETCSignals.ES910.ES910.CAN1_ES921.CAN_IO_ECAN.Gateway_72.BH_Blinker_re","Right_Index"],
+					["ETCSignals.ES910.ES910.CAN1_ES921.CAN_IO_ECAN.Gateway_72.BH_Blinker_li","Left_Index"],
+					["ETCSignals.ES910.ES910.CAN1_ES921.CAN_IO_ECAN.Gateway_76.FAS_Taster","LaneChange_Approved"],
+					["ETCSignals.ES910.ES910.CAN2_ES921.CAN_IO_ADMA.GNSS_Time_UTC.GNSS_Time_msec","GPS_time"],
+					["ETCSignals.ES910.ES910.CAN2_ES921.CAN_IO_ADMA.INS_Position_POI1_absolute.INS_Long_Abs_POI1", "LongPos_abs"],
+					["ETCSignals.ES910.ES910.CAN2_ES921.CAN_IO_ADMA.INS_Position_POI1_absolute.INS_Lat_Abs_POI1", "LatPos_abs"],
+					["ETCSignals.ES910.ES910.CAN1_ES921.CAN_IO_ECAN.BV_Linie_01.BV_Linie_01_dy", "c01_left"],
+					["ETCSignals.ES910.ES910.CAN1_ES921.CAN_IO_ECAN.BV_Linie_02.BV_Linie_02_dy", "c01_right"],
+					["ETCSignals.ES910.ES910.CAN1_ES921.CAN_IO_ECAN.BV_Linie_02.BV_Linie_03_dy", "c02_left"],
+					["ETCSignals.ES910.ES910.CAN1_ES921.CAN_IO_ECAN.BV_Linie_02.BV_Linie_04_dy", "c02_right"],
+					["ETCSignals.ES910.ES910.CAN1_ES921.CAN_IO_ECAN.BV_Linie_01.BV_Linie_01_Gierw_diff", "c1_orientation"],
+					["ETCSignals.ES910.ES910.CAN1_ES921.CAN_IO_ECAN.BV_Linie_02.BV_Linie_02_Gierw_diff", "c2_orientation"],
+					["ETCSignals.ES910.ES910.CAN1_ES921.CAN_IO_ECAN.BV_Linie_01.BV_Linie_01_hor_Kruemmung", "c1_curvature"],
+					["ETCSignals.ES910.ES910.CAN1_ES921.CAN_IO_ECAN.BV_Linie_02.BV_Linie_02_hor_Kruemmung", "c2_curvature"],
+					["ETCSignals.ES910.ES910.CAN1_ES921.CAN_IO_ECAN.BV_Linien.BV_Linie_01_dx_Vorausschau", "c1_dx"],
+					["ETCSignals.ES910.ES910.CAN1_ES921.CAN_IO_ECAN.BV_Linien.BV_Linie_02_dx_Vorausschau", "c2_dx"],
+					["ETCSignals.ES910.ES910.CAN1.CAN_IO_FCAN.EPS_HAD_Response_01.EPS_HAD_01_Mux_M8_EPS_HAD_01_08_RoadWheelAngle", "SteeringAngle"],
+					["ETCSignals.ES910.ES910.CAN1.CAN_IO_FCAN.EPS_HAD_Response_01.EPS_HAD_01_Mux_M8_EPS_HAD_01_08_TorsionBarTorque", "SteeringTorque"],
+					["ETCSignals.ES910.ES910.CAN2.CAN_IO_ACAN.VehicleStateEstimationRaw_01.Vse_Raw_01_VmcVseAxVeh", "AccelerationX_ESP"],
+					["ETCSignals.ES910.ES910.CAN1.CAN_IO_FCAN.ESP_02.ESP_Querbeschleunigung", "AccelerationY_ESP"],
+					["ETCSignals.ES910.ES910.CAN1.CAN_IO_FCAN.ESP_02.ESP_Gierrate", "yawRateESP_deg_sec"],
+					["ETCSignals.ES910.ES910.CAN1.CAN_IO_FCAN.ESP_02.ESP_VZ_Gierrate", "yawRateESP_sign"],
+					["ETCSignals.ES910.ES910.CAN2.CAN_IO_ACAN.VehicleStateEstimationRaw_01.Vse_Raw_01_VmcVseVxVeh", "VelocityX_ESP"],
+					["ETCSignals.ES910.ES910.CAN1_ES921.CAN_IO_ECAN.MRR_TCI_03.dxPP_0_TCI", "objectDistanceFront"],
+					["ETCSignals.ES910.ES910.CAN1_ES921.CAN_IO_ECAN.MRR_TCI_04.vxPP_0_TCI", "objectVelocityFront"],
+					["ETCSignals.ES910.ES910.CAN1_ES921.CAN_IO_ECAN.MRR_TCI_05.asPP_0_TCI", "objectAccelerationFront"],
+					["VmcAdas.m_laneChangeDirection_pdp", "laneChangeDirectionOnline"],
+					["VmcAdas.m_laneChangeState_pdp", "laneChangeStateOnline"]
+					]
+				},
+			"signal_profile_VW_Golf_DASy_JP":
+				{
+					"mf4": [
+					["_g_PL_AD_fw_fal_postproc_postproc_postproc_commonRunnable_RunnablePostProc.m_aplHmiController.m_postprocCalculatorBaseEst.m_rightTurnIndicatorActivationRequest","Right_Index"],
+					["_g_PL_AD_fw_fal_postproc_postproc_postproc_commonRunnable_RunnablePostProc.m_aplHmiController.m_postprocCalculatorBaseEst.m_leftTurnIndicatorActivationRequest","Left_Index"],
+					["_g_PL_AD_fw_OneDrivingSW_fct_fct_mainproc_ods_fct_ods_fct_mainproc_RunnableMainProc_m_portMainProcInternalData_out_local.m_commonProcessorSignals.m_videoLanesData.m_boundaryLeft.m_dy.m_value", "c01_left"],
+					["_g_PL_AD_fw_OneDrivingSW_fct_fct_mainproc_ods_fct_ods_fct_mainproc_RunnableMainProc_m_portMainProcInternalData_out_local.m_commonProcessorSignals.m_videoLanesData.m_boundaryRight.m_dy.m_value", "c01_right"],
+					["ReferenceLine_c1.CorridorPrep_Polygon2Polynomial.CorridorPreparation", "c1"],
+					["ReferenceLine_c2.CorridorPrep_Polygon2Polynomial.CorridorPreparation", "c2"],
+					["_g_PL_AD_fw_OneDrivingSW_constancy_ods_constancy_m_pmePort_out_local.steeringWheelAngle.m_value", "SteeringAngle"],
+					["_g_PL_AD_fw_fal_preproc_preproc_RunnablePreProc_m_steeringSystemFeedback_local.m_torsionBarTorque.m_value", "SteeringTorque"],
+					["_g_PL_AD_fw_OneDrivingSW_constancy_ods_constancy_m_pmePort_out_local.axvRef_sw", "AccelerationX_ESP"],
+					["_g_PL_AD_fw_OneDrivingSW_constancy_ods_constancy_m_pmePort_out_local.ayvRef_sw", "AccelerationY_ESP"],
+					["_g_PL_AD_fw_OneDrivingSW_constancy_ods_constancy_m_pmePort_out_local.psiDtOpt_sw", "yawRateESP"],
+					["ETCSignals.ES910.ES910.CAN1.CAN_IO_FCAN.ESP_02.ESP_VZ_Gierrate", "yawRateESP_sign"],
+					["_g_PL_AD_fw_OneDrivingSW_constancy_ods_constancy_m_pmePort_out_local.vxvRef_sw", "VelocityX_ESP"],
+					["_g_PL_AD_fw_OneDrivingSW_sitBs_timba_TimbaRunnable_m_targetGatewayObjects_local.m_objectDataList.i0.m_dx.m_value", "objectDistanceFront"],
+					["_g_PL_AD_fw_OneDrivingSW_sitBs_timba_TimbaRunnable_m_targetGatewayObjects_local.m_objectDataList.i0.m_vx.m_value", "objectVelocityFront"],
+					["_g_PL_AD_fw_OneDrivingSW_sitBs_timba_TimbaRunnable_m_targetGatewayObjects_local.m_objectDataList.i0.m_ax.m_value", "objectAccelerationFront"],
+					["_g_PL_AD_fw_OneDrivingSW_sitBs_timba_TimbaRunnable_m_targetGatewayObjects_local.m_objectDataList.i2.m_dx.m_value", "objectDistanceFrontLeft"],
+					["_g_PL_AD_fw_OneDrivingSW_sitBs_timba_TimbaRunnable_m_targetGatewayObjects_local.m_objectDataList.i2.m_vx.m_value", "objectVelocityFrontLeft"],
+					["_g_PL_AD_fw_OneDrivingSW_sitBs_timba_TimbaRunnable_m_targetGatewayObjects_local.m_objectDataList.i2.m_ax.m_value", "objectAccelerationFrontLeft"],
+					["_g_PL_AD_fw_OneDrivingSW_sitBs_timba_TimbaRunnable_m_targetGatewayObjects_local.m_objectDataList.i3.m_dx.m_value", "objectDistanceFrontRight"],
+					["_g_PL_AD_fw_OneDrivingSW_sitBs_timba_TimbaRunnable_m_targetGatewayObjects_local.m_objectDataList.i3.m_vx.m_value", "objectVelocityFrontRight"],
+					["_g_PL_AD_fw_OneDrivingSW_sitBs_timba_TimbaRunnable_m_targetGatewayObjects_local.m_objectDataList.i3.m_ax.m_value", "objectAccelerationFrontRight"],
+					["ETCSignals.ES910.ES910.CAN1_ES921.CAN_IO_ECAN.BV_Linien.BV_Linie_01_dx_Vorausschau", "c1_dx"],
+					["ETCSignals.ES910.ES910.CAN1_ES921.CAN_IO_ECAN.BV_Linien.BV_Linie_02_dx_Vorausschau", "c2_dx"],
+					["ETCSignals.ES910.ES910.CAN2_ES921.CAN_IO_ADMA.GNSS_Time_UTC.GNSS_Time_msec","GPS_time"],
+					["EHU_GPSLongi", "LongPos_abs"],
+					["EHU_GPSLati", "LatPos_abs"]
+					],
+					"mat": [
+					["GPS_status", "GPS_status"],
+					["KF_status", "KF_status"],
+					["Right_Index","Right_Index"],
+					["Left_Index","Left_Index"],
+					["LaneChange_Approved","LaneChange_Approved"],
+					["GPS_time","GPS_time"],
+					["LongPos_abs", "LongPos_abs"],
+					["LatPos_abs", "LatPos_abs"],
+					["c01_left", "c01_left"],
+					["c01_right", "c01_right"],
+					["c02_left", "c02_left"],
+					["c02_right", "c02_right"],
+					["c1", "c1"],
+					["c2", "c2"],
+					["SteeringAngle", "SteeringAngle"],
+					["SteeringTorque", "SteeringTorque"],
+					["AccelerationX_ESP", "AccelerationX_ESP"],
+					["AccelerationY_ESP", "AccelerationY_ESP"],
+					["yawRateESP", "yawRateESP"],
+					["VelocityX_ESP", "VelocityX_ESP"],
+					["objectDistanceFront", "objectDistanceFront"],
+					["objectVelocityFront", "objectVelocityFront"],
+					["objectAccelerationFront", "objectAccelerationFront"],
+					["objectDistanceFrontLeft", "objectDistanceFrontLeft"],
+					["objectVelocityFrontLeft", "objectVelocityFrontLeft"],
+					["objectAccelerationFrontLeft", "objectAccelerationFrontLeft"],
+					["objectDistanceFrontRight", "objectDistanceFrontRight"],
+					["objectVelocityFrontRight", "objectVelocityFrontRight"],
+					["objectAccelerationFrontRight", "objectAccelerationFrontRight"]
+					]
+				},
+			"signal_profile_Skoda_RHJ_ADMA_only":
+				{
+					"mf4": [
+					["Status_GNSS_Mode", "GPS_status"],
+					["Status_KF_steady_state", "KF_status"],
+					["Acc_Hor_X_POI1", "AccelerationX_ESP"],
+					["Acc_Hor_Y_POI1", "AccelerationY_ESP"],
+					["Rate_Body_Z", "yawRateESP"],
+					["INS_Vel_Hor_X_POI1", "VelocityX_ESP"],
+					["GNSS_Time_msec", "GPS_time"],
+					["INS_Long_Abs_POI1", "LongPos_abs"],
+					["INS_Lat_Abs_POI1", "LatPos_abs"]
+					]
+				}
+		}
+	],
+	"evaluation_profiles": [
+		"MapValidation", "Map_ValidationJkk", "MapBand","NodePointDefinition","RoadGeneration","DriverModelAnalysis","DriverModelLearning", "Resimulation", 
+		"Python_evaluation_basic","Python_evaluation_light","Python_evaluation_online","Python_train"],
+	"segmentation_profiles": [
+		"MapValidation", "MapValidationJkk", "MapBand","DriverModel","Simulation","Resimulation"]	
+}
+	

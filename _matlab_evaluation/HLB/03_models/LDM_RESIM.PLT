@@ -1,0 +1,10 @@
+U_0  nobit 1 unit=- scmin=0 scmax=1
+U_1  nobit 1 unit=- scmin=0 scmax=1
+U_2  nobit 1 unit=- scmin=0 scmax=1
+U_3  nobit 1 unit=- scmin=0 scmax=1
+U_4  nobit 1 unit=- scmin=0 scmax=1
+U_5  nobit 1 unit=- scmin=0 scmax=1
+U_6  nobit 1 unit=- scmin=0 scmax=1
+x_0  nobit 1 unit=- scmin=0 scmax=1
+x_1  nobit 1 unit=- scmin=0 scmax=1
+x_2  nobit 1 unit=- scmin=0 scmax=1

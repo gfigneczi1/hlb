@@ -1,0 +1,25 @@
+close all;
+clear all;
+
+path = "C:\git\KDP_Igneczi\publikációk\LaneWandering\data\mpcOptimization\resimulation_MWM";
+qualityMap = "C:\git\KDP_Igneczi\publikációk\LaneWandering\data\mpcOptimization\quality.xlsx";
+
+q = table2array(readtable(qualityMap));
+q = q(2:end,2:end);
+
+matFiles = dir(fullfile(path, "\*.mat"));
+
+f = figure();
+
+for i=1:length(matFiles)
+    data = load(fullfile(matFiles(i).folder, matFiles(i).name));
+    qualityVector = q(i,:);
+    e = [];
+    for j=1:size(data.data,2)
+        if (qualityVector(j)==1)
+            e = [e; data.data(j).e];
+        end
+    end
+    plot(e, "DisplayName",num2str())
+
+end

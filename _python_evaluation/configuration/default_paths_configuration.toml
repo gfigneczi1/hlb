@@ -1,0 +1,46 @@
+# Default configuration file of the acceleration profiler's paths
+working_directory = 'C:\git\kdp_hlb_evalframework\_temp'
+
+[log]
+path_is_relative_to_the_working_directory = true
+log_directory = 'logs'
+
+[driver]
+path_is_relative_to_the_working_directory = true
+subject_trip_mapping_file = 'subjects.csv'
+
+[preprocessing]
+path_is_relative_to_the_working_directory = true
+preprocessing_input_directory = 'avt_data'
+# Extraction
+preprocessing_extraction_output_directory = 'preprocessing\extraction\window_data'
+preprocessing_extraction_information_output_directory = 'preprocessing\extraction\window_information'
+# Map
+preprocessing_map_output_directory = 'preprocessing\map'
+geographic_data_output_directory =  'preprocessing\map\trip_geographic_data'
+
+[modeling]
+path_is_relative_to_the_working_directory = true
+modeling_output_directory = 'modeling\model_parameters'
+# Matlab
+modeling_matlab_directory = 'modeling\matlab'
+
+[analysis]
+path_is_relative_to_the_working_directory = true
+analysis_output_directory = 'analysis'
+# Weighted formula
+analysis_weighted_formula_output_directory = 'analysis\weighted_formula'
+# Curvature metric
+analysis_curvature_output_directory = 'analysis\curvature'
+
+[signal]
+path_is_relative_to_the_project_root_directory = true
+signal_profile_file = '_python_evaluation\configuration\acceleration_learning_signal_profiles.json'
+
+[test]
+path_is_relative_to_the_project_root_directory = true
+speedup_ground_truth_file_path = '_python_evaluation\acceleration_learning\tests\ground_truth\speedup_moments.json'
+slowdown_ground_truth_file_path = '_python_evaluation\acceleration_learning\tests\ground_truth\slowdown_moments.json'
+any_situation_ground_truth_file_path = '_python_evaluation\acceleration_learning\tests\ground_truth\any_situation_moments.json'
+[test_data]
+external_test_data_directory_path = '\\abtvdfs2.de.bosch.com\ismdfs\ilm\abt\AVT_Datasets\CAN_Exports\Cadillac_CT6'

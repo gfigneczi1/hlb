@@ -1,0 +1,7 @@
+setup.py
+matlabruntimeforpython.egg-info/PKG-INFO
+matlabruntimeforpython.egg-info/SOURCES.txt
+matlabruntimeforpython.egg-info/dependency_links.txt
+matlabruntimeforpython.egg-info/top_level.txt
+read_rosbag/__init__.py
+read_rosbag/read_rosbag.ctf

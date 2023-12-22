@@ -1,0 +1,19 @@
+{
+    "basic_signals": ["GPS_time", "GPS_status", "LongPos_abs", "LatPos_abs"
+    ,"c01_left", "c01_right", "c1", "c2", "q_T0",
+    "VelocityX_ESP", "AccelerationX_ESP", "AccelerationY_ESP", "yawRateESP", "SteeringAngle",
+    "objectAccelerationFront", "objectVelocityFront", "objectDistanceFront",
+    "Left_Index", "Right_Index", "LaneChange_Approved"
+                        ],
+    "light_signals": ["c01_left", "c01_right", "c1", "c2",
+    "VelocityX_ESP", "AccelerationX_ESP", "AccelerationY_ESP", "yawRateESP", "SteeringAngle",
+    "objectAccelerationFront", "objectVelocityFront", "objectDistanceFront",
+    "Left_Index", "Right_Index"
+                    ],
+    "online_signals": ["c01_left", "c01_right", "c1", "c2", "q_T0",
+    "VelocityX_ESP", "AccelerationX_ESP", "AccelerationY_ESP", "yawRateESP", "SteeringAngle",
+    "objectAccelerationFront", "objectVelocityFront", "objectDistanceFront",
+    "Left_Index", "Right_Index", "LaneChange_Approved",
+    "laneChangeDirectionOnline", "laneChangeStateOnline"
+                        ]
+}

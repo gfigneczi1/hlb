@@ -1,0 +1,67 @@
+function functional_laneWanderingDistribution(segments, config, params)
+global segment_m indexes
+
+for fileID = 1:length(segments.segments)
+    segment = segments.segments(fileID).segment;
+    name = segments.segments(fileID).name;
+    % writing the metadata for file save at the end
+    names{fileID,1} = name(1:end-4);
+
+    [~, segment_m, indexes] = prepareInputForPlanner(segment);
+    curveTypes = calculateCurveType(segment_m, indexes); % 1: straight line
+
+    [f, x] = fmincon(@optimCutOffReq, 0.05, [], [], [], [], 0, 9.99);
+
+    dT = 0.05;
+    fc = 9.99; % in Hz
+    [slowOffset, offsetError, laneOffset] = functional_calculateStraightLineOffset(segment_m, indexes, fc, dT);
+    offsetError = offsetError(curveTypes==1);
+
+    params_normal = fitdist(offsetError, 'Normal');
+    params_exponential = fitdist(offsetError+abs(min(offsetError))+1e-8, 'Lognormal');
+    params_gamma = fitdist(offsetError+abs(min(offsetError))+1e-8, 'Gamma');
+
+    % Calculate the ECDF values
+    range = max(offsetError) - min(offsetError);
+    [N, edges] = histcounts(offsetError, 'Normalization','probability');
+
+    % Calculate the theoretical CDF values for each distribution
+    pdf_normal = pdf(params_normal, offsetError) / length(N)*range;
+    pdf_exponential= lognpdf(offsetError+abs(min(offsetError))+1e-8, params_exponential.mu, params_exponential.sigma);
+    pdf_gamma = gampdf(offsetError+abs(min(offsetError))+1e-8, params_gamma.a, params_gamma.b);
+
+    % Perform chi-square goodness-of-fit test
+    [h_normal, p_normal, stats_normal] = chi2gof(offsetError, 'CDF', params_normal);
+    [h_exponential, p_exponential, stats_exponential] = chi2gof(offsetError+abs(min(offsetError))+1e-8, 'CDF', params_exponential);
+    [h_gamma, p_gamma, stats_gamma] = chi2gof(offsetError+abs(min(offsetError))+1e-8, 'CDF', params_gamma);
+
+    % Display the results
+    fprintf('Normal Distribution:\n');
+    disp(stats_normal);
+    fprintf('Exponential Distribution:\n');
+    disp(stats_exponential);
+    fprintf('Gamma Distribution:\n');
+    disp(stats_gamma);
+
+    % Compare p-values to determine which distribution fits the data best
+    if p_normal < p_exponential
+        fprintf('Normal distribution fits the data best.\n');
+    else
+        fprintf('Exponential distribution fits the data best.\n');
+    end
+end
+
+end
+
+function f = optimCutOffReq(x0)
+global segment_m indexes
+
+ [~, offsetError, ~] = functional_calculateStraightLineOffset(segment_m, indexes, x0, 0.05);
+ params_normal = mle(offsetError);
+
+ y_mu = 1/(params_normal(2)*sqrt(2*pi()))
+
+ f = 1/params_normal.mu;
+
+end
+

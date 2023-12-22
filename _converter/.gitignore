@@ -1,0 +1,6 @@
+__pycache__/*
+pltparser/parsetab.py
+pltparser/parser.out
+appdata/config.cfg
+**/__pycache__/*
+dist/**
