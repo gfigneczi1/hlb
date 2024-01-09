@@ -1,7 +1,10 @@
 # Human-Like Behavior of Automated Driving Systems
 This repository contains algorithms for driver model analysis and prototypes for ADAS functions endowed with human-like features.
 
-
+## How is this repository organized?
+The most up-to-date versions of exact functional solutions can be found in the 'Solutions' subfolder. This contains further sub-folders with major solutions in the chain of the automated driving system.
+The code contained by these folders, or the links to other code spaces are validated, their validation details can be found in their corresponding read-me files.
+Further code can be found in the matlab_evaluation and the python_evaluation subfolders. These contain a more complex development chain, the code inside is still under development.
 
 ## Published Papers
 [1] Ignéczi G., Horvath E., Pup D.: Implementation of a self-developed model predictive control scheme for vehicle parking maneuvers. The first ISTRC Annual Conference, Tel-Aviv, Izrael, 21, June 2021. \
