@@ -1,7 +1,8 @@
 close all;
 clear;
 
-resultPath = "C:\git\KDP_Igneczi\publikációk\LaneWandering\data\mpcOptimization\resultsSuccessful";
+%resultPath = "C:\git\KDP_Igneczi\publikációk\LaneWandering\data\mpcOptimization\resultsSuccessful";
+resultPath = "C:\git\hlb\_temp\snippets";
 
 matFiles = dir(fullfile(resultPath, "*.mat"));
 
