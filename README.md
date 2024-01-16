@@ -85,7 +85,8 @@ https://jkk-web.sze.hu/fenntarthato-jarmuipari-technologiak-kutatasa-a-szechenyi
 [C14]   J. Kong, M. Pfeiffer, G. Schildbach and F. Borelli, "Kinematic and Dynamic Vehicle Models for Autonomous Driving Control Design," in IEEE Intelligent Vehicles Symposium, Seoul, Korea, 2015.\
 [C15]   H. Ye, H. Jiang, S. Ma, B. Tang and L. Wahab, "Linear model predictive control of automatic parking path tracking with soft constraints," International Journal of Advanced Robotic Systems, pp. 1 - 13, May - June 2019. \
 [C16]   O. Pauca, C. F. Curuntu and C. Lazar, "Predictive Control for the lateral and longitudinal dynamics in automated vehicles," in 23rd International Conference on System Theory, Control and Computing, Sinaia, 2019. \
-[C17]   L. Wang, Model Predictive Control System Design and Implementation using Matlab, London: Springer - Verlag, 2009, pp. 28 - 84, 324 - 359.
+[C17]   L. Wang, Model Predictive Control System Design and Implementation using Matlab, London: Springer - Verlag, 2009, pp. 28 - 84, 324 - 359.\
+[C18]   Findeisen, Rolf & Allgöwer, Frank. (2002). An introduction to nonlinear model predictive control. 21st Benelux Meeting on Systems and Control. 
 
 ### Literature of planner driver models (Pxx)
 [P1] 	I. Bae, J. Moon és J. Seo, „Toward a Comfortable Driving Experience for a Self-Driving Shuttle Bus,” Electronics, (8), vol. 9, pp. 943-955, 2019. \
