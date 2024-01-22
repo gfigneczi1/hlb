@@ -1,7 +1,7 @@
 close all;
 clear all;
 
-paramFilesLeft = dir(fullfile("C:\git\KDP_Igneczi\publikációk\LaneWandering\data\mpcOptimization\snippets_45_fminsearch_positive\successfulOptimization", "\*.mat"));
+paramFilesLeft = dir(fullfile("C:\Users\igg2bp\Documents\00_Projects\Research\laneWandering\_dataIn\optimizedParameters", "\*.mat"));
 drID_prev = "";
 for i=1:length(paramFilesLeft)
     drID = convertCharsToStrings(paramFilesLeft(i).name(1:find(paramFilesLeft(i).name=='.',1)-1));

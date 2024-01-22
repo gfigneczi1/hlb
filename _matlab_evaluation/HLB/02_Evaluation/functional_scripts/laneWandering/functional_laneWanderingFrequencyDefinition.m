@@ -147,13 +147,13 @@ for fileID=1:size(segments.segments,2)
     end
         
     savefig(f, fullfile(temp_folder_path, plots_folder_name, "frequencies", ...
-                    strcat('Window_Analysis', snippetsNegOffs(i).name(1:end-4),'_', num2str(i), '.fig')));
+                   strcat('Window_Analysis', name(1:end-4),'_', num2str(i), '.fig')));
     saveas(f, fullfile(temp_folder_path, plots_folder_name, "frequencies", ...
-                    strcat('Window_Analysis', snippetsNegOffs(i).name(1:end-4),'_', num2str(i), '.png')));
+                    strcat('Window_Analysis', name(1:end-4),'_', num2str(i), '.png')));
     close(f);
 
     save(fullfile(temp_folder_path, plots_folder_name, "frequencies", ...
-                    strcat('Window_AnalysisData', snippetsNegOffs(i).name(1:end-4),'_', num2str(i), '.mat')), 'data');
+                    strcat('Window_AnalysisData', name(1:end-4),'_', num2str(i), '.mat')), 'data');
 end
 
 end

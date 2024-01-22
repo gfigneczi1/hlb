@@ -33,7 +33,7 @@ function evaluator_laneWandering(segments,config)
 % intervention point calculation. This function does not return anything
 % but calculates the distribution of the offset error extrema assoicated
 % with the intervention point and saves the corresponding plot.
-functional_laneWanderingInterventionPoints(segments, config);
+%functional_laneWanderingInterventionPoints(segments, config);
 
 %% Step 3: 
 % optimizitation of the mpc params on the snippets OR re-simulate 

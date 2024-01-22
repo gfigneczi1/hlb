@@ -49,7 +49,7 @@ segment_m(:,end+1) = oncomingTrafficScaled;
 indexes.oncomingTrafficScaled = size(segment_m,2);
 
 %% Input  and Output matrix (row: signals, column: time steps)
-type = "total"; 
+type = "snippeting"; 
 
 curveTypes = calculateCurveType(segment_m, indexes, name);
 switch type

@@ -3,7 +3,7 @@ function functional_laneWanderingMpc(segments, config)
 global snippetsNegOffs i interventionPoint snippetLocalTrajectory snippetLocalVehiclePath snippetLength parametersMpc
 
 RESIMULATE_OPTIMIZED_PARAMETERS = false;
-MAXIMUM_NUMBER_OF_SNIPPETS = 15;
+MAXIMUM_NUMBER_OF_SNIPPETS = 6;
 
 temp_folder_path = config.root;
 plots_folder_name = 'plots';
@@ -125,7 +125,7 @@ for fileID=1:size(segments.segments,2)
             fprintf('Optimization of iteration %d has run\n',i);
             fprintf('Final cost is %f, final parameters are [%f %f %f %f]\n', f, x);
 
-            x0 = x; % returning previous cycle value
+            %x0 = x; % returning previous cycle value
 
             parametersMpc.qDrift = [x(1) 0];
             parametersMpc.rDrift = x(2);
@@ -284,6 +284,11 @@ global snippetsNegOffs i interventionPoint snippetLocalTrajectory snippetLocalVe
 
     ref(:,1) = simulatedPos(:,1);
     ref(:,2) = spline(snippetLocalVehiclePath(:,1), snippetLocalVehiclePath(:,2), ref(:,1));
+
+%     p = plot(ref(:,1), ref(:,2), simulatedPos(:,1), simulatedPos(:,2), snippetLocalTrajectory(:,1), snippetLocalTrajectory(:,2), snippetLocalVehiclePath(interventionPoint,1), snippetLocalVehiclePath(interventionPoint,2));
+%     set(p(3), 'color', 'k', 'LineStyle', '--');
+%     set(p(4), 'color', 'k', 'Marker', 'o', 'LineWidth', 3);
+%     shg;
 
     f = sum((simulatedPos(:,2) - ref(:,2)).^2);
     
