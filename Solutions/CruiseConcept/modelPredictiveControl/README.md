@@ -119,16 +119,23 @@ The following parameters must be given for the simulation:
 - $T_{solver}$ - solver step size, unit $s$, default value: $0.02 s$
 - $T_s$ - simulation step size, unit $s$, default value: $0.1 s$
 - $t_{steeringDelay}$ - considered steering delay, unit: $s$, default value: $0 s$
-- $\alpha$ - the weight matrix, which contains the weights of the output signals in its diagonals, and zero everywhere else, default value: $ diag(10.0, 0.0)$
-- $\kappa$ - weight of the input amplitude, default value: $0.001$
-- $\beta$ - weight of the terminal cost, commonly given for all outputs, default value: $0.0$
+- $\alpha$ - the weight matrix, which contains the weights of the output signals in its diagonals, and zero everywhere else, default value: $ diag(0.1, 0.001)$
+- $\kappa$ - weight of the input amplitude, default value: $1.0$
+- $\beta$ - weight of the terminal cost, commonly given for all outputs, default value: $0.5$
 - $v_x$ - vehicle speed is also given as a parameter of simulation, unit: $m/s$, default value: $30 m/s$
-- $T$ - length of simulation, unit: $s$, default value: $40 s$
+- $T$ - length of simulation, unit: $s$, default value: $20 s$
 
 All parameters are given in the ```parameters``` struct.
 The below results were generated using the default parameters. Optimization is done using the ```fminsearch``` function of MATLAB. The solver is ```ODE45``` of MATLAB.
 The cost function is defined as the follows:\
 $f(\boldsymbol{x}, u, t) = l(\Phi(U, \boldsymbol{x}, t), u, t) + S(\Phi(U, \boldsymbol{x}, T_h),  T_h) =\sum_{k=0}^{k=N_p}((\boldsymbol{y}-\boldsymbol{y}_{ref})^T\alpha(\boldsymbol{y}-\boldsymbol{y}_{ref})+\kappa u^2) + \beta (\boldsymbol{y}-\boldsymbol{y}_{ref})^T (\boldsymbol{y}-\boldsymbol{y}_{ref})$
+
+<img src="offline_nmpc_01.png" alt="mpc" width="500"/>\
+
+The following notes are made based on the results:
+- optimization is fairly slow, fmincon is not runtime optimized
+- orientation weight causes slight 'fallback' around the half of the lateral transition
+- linear interpolation slightly proved the tracking performance
 
 # References
 ### Own publications
