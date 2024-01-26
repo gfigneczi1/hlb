@@ -64,6 +64,71 @@ In the beginning phase the following considerations are proposed:
 - linear implementation, incl. constrained optimization functions is available on MATLAB level [1].
 
 # Results
+## Offline Models - MATLAB
+The script is available [here](../../../_matlab_evaluation/HLB/04_standaloneScripts/nmpc_path_track.m).
+The following vehicle model is used [V1]:
+- $\dot{v}_y = \frac{F_{yf}}{m}cos\delta_f+\frac{F_{yr}}{m}-v_xr$
+- $\dot{r} = \frac{L_f}{I_z}F_{yf}cos\delta_f-\frac{L_r}{I_z}F_{yr}$
+- $\dot{x_g} = v_xcos\Theta-v_ysin\Theta$
+- $\dot{y_g} = v_xsin\Theta+v_ycos\Theta$
+- $\dot{\Theta} = r$
+  
+Where $r$ is the yawarate (unit: $rad/s$), $F_{yf}$ and $F_{yr}$ are the front and rear lateral tire forces (unit: $N$), $\delta_f$ is the road-wheel angle of the front wheel (unit: $rad$), $v_x$ and $v_y$ are longitudinal and lateral speed of the vehicle respectively (unit: $m/s$), $x_g$ and $y_g$ are the global coordinates of the CG (unit: $m$), $\Theta$ is the global orientation of the vehicle (unit: $rad$).
+  
+The free parameters of the vehicle model are the following:
+- $m$ - vehicle mass, unit: $kg$
+- $L_f$ and $L_r$ - distance between the center-of-gravity (cg) and the front/rear axle respectively, unit: $m$
+- $I_z$ moment of interatio of the vehicle, unit: $kg m^2$
+
+Also, constant longitudinal speed in the ego frame is assumed. \
+<img src="dynModel.png" alt="mpc" width="300"/>\
+
+The test script contains the following methods:\
+Implementation of the model:
+```
+function dxdt = ODE(t, x, U)
+```
+Manual solver of one integration step:
+```
+function x_k = F(x_k1, U, Td)
+```
+Solver for given time (also incl. option of built-in ODE45 solver of MATLAB):
+```
+phi_tk = phi(t_N, U, x0)
+```
+Input signal interpolation:
+```
+function u_k = mu(U, t_k)
+```
+Output from state vector function:
+```
+function y = output(x)
+```
+Terminal and Running Cost:
+```
+function s = S(x,T)
+function fl = l(x,u, t_k)
+```
+Optimization Object Function:
+```
+f = objfunx(U)
+```
+The following parameters must be given for the simulation:
+- $N_p$ - number of prediction steps, unit: $-$, default value: $10$
+- $T_h$ - prediction horizon, unit: $s$, default value: $6 s$
+- $T_{solver}$ - solver step size, unit $s$, default value: $0.02 s$
+- $T_s$ - simulation step size, unit $s$, default value: $0.1 s$
+- $t_{steeringDelay}$ - considered steering delay, unit: $s$, default value: $0 s$
+- $\alpha$ - the weight matrix, which contains the weights of the output signals in its diagonals, and zero everywhere else, default value: $ diag(10.0, 0.0)$
+- $\kappa$ - weight of the input amplitude, default value: $0.001$
+- $\beta$ - weight of the terminal cost, commonly given for all outputs, default value: $0.0$
+- $v_x$ - vehicle speed is also given as a parameter of simulation, unit: $m/s$, default value: $30 m/s$
+- $T$ - length of simulation, unit: $s$, default value: $40 s$
+
+All parameters are given in the ```parameters``` struct.
+The below results were generated using the default parameters. Optimization is done using the ```fminsearch``` function of MATLAB. The solver is ```ODE45``` of MATLAB.
+The cost function is defined as the follows:\
+$ \sum_{k=0}^{k=N_p}(\boldsymbol(y)-\boldsymbol(y_{ref}))^T\alpha(\boldsymbol(y)-\boldsymbol(y_{ref}))+\kappa u^2 + \beta (\boldsymbol(y)-\boldsymbol(y_{ref}))^T (\boldsymbol(y)-\boldsymbol(y_{ref}))$
 
 # References
 ### Own publications
@@ -78,6 +143,9 @@ https://www.researchgate.net/publication/354774900_Implementation_of_a_self-deve
 [C16]   O. Pauca, C. F. Curuntu and C. Lazar, "Predictive Control for the lateral and longitudinal dynamics in automated vehicles," in 23rd International Conference on System Theory, Control and Computing, Sinaia, 2019. \
 [C17]   L. Wang, Model Predictive Control System Design and Implementation using Matlab, London: Springer - Verlag, 2009, pp. 28 - 84, 324 - 359.\
 [C18]   Findeisen, Rolf & Allgöwer, Frank. (2002). An introduction to nonlinear model predictive control. 21st Benelux Meeting on Systems and Control. 
+
+### Literature of Vehicle modelling (Vxx)
+[V1]    Romain Pepy, Alain Lambert and Hugues Mounier: Path Planning using a Dynamic Vehicle Model, Institut d'Electronique Fondamentale UMR CNRS 8622 - Universite Paris-Sud XI Bat. 220, 914U05 Orsay, France
 
 ### Proposed toolboxes
 - https://tinympc.org

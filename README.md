@@ -149,6 +149,8 @@ https://jkk-web.sze.hu/fenntarthato-jarmuipari-technologiak-kutatasa-a-szechenyi
 [E19]   M. K. Raman, "On the Identification of Variances and Adaptive Kalman Filtering," in IEEE Transactions on Automatic Control, 1970. \
 [E20]   C. Cuadras, "On the Covariance between Functions," Journal of Multivariate Analysis, pp. 19-27, 2002.
 
+### Vehicle modelling (Vxx)
+[V1]    Romain Pepy, Alain Lambert and Hugues Mounier: Path Planning using a Dynamic Vehicle Model, Institut d'Electronique Fondamentale UMR CNRS 8622 - Universite Paris-Sud XI Bat. 220, 914U05 Orsay, France
 
 # About the Author
 
