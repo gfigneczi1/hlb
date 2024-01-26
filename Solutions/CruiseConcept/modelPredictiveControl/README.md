@@ -128,7 +128,7 @@ The following parameters must be given for the simulation:
 All parameters are given in the ```parameters``` struct.
 The below results were generated using the default parameters. Optimization is done using the ```fminsearch``` function of MATLAB. The solver is ```ODE45``` of MATLAB.
 The cost function is defined as the follows:\
-$ \sum_{k=0}^{k=N_p}(\boldsymbol(y)-\boldsymbol(y_{ref}))^T\alpha(\boldsymbol(y)-\boldsymbol(y_{ref}))+\kappa u^2 + \beta (\boldsymbol(y)-\boldsymbol(y_{ref}))^T (\boldsymbol(y)-\boldsymbol(y_{ref}))$
+$f(\boldsymbol{x}, u, t) = l(\Phi(U, \boldsymbol{x}, t), u, t) + S(\Phi(U, \boldsymbol{x}, T_h),  T_h) =\sum_{k=0}^{k=N_p}((\boldsymbol{y}-\boldsymbol{y}_{ref})^T\alpha(\boldsymbol{y}-\boldsymbol{y}_{ref})+\kappa u^2) + \beta (\boldsymbol{y}-\boldsymbol{y}_{ref})^T (\boldsymbol{y}-\boldsymbol{y}_{ref})$
 
 # References
 ### Own publications
