@@ -47,6 +47,8 @@ function [segment, segment_m, indexes] = prepareInputForPlanner(segment)
     [~, indexes.q_T0] = ismember('q_T0',varnames);
     [~, indexes.yawRate] = ismember('yawRateESP',varnames);
     [~, indexes.oncomingTraffic] = ismember('oncomingTraffic', varnames);
+    [~, indexes.trafficInFront] = ismember('trafficInFront', varnames);
+    [~, indexes.timeToPass] = ismember('timeToPass', varnames);
     [~, indexes.drID] = ismember('drID', varnames);
 
     segment_m = table2array(segment);

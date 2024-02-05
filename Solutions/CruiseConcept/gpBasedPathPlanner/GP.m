@@ -1,13 +1,19 @@
-function GP()
 % This function is the cover function to call the GP sub-function for a
 % given segment. Segments is an array of struct containing the driving data
 % of multiple drivers. Config is a metadata struct containing information
 % about e.g., the plot folders
-close all;
-load('inputs.mat');
+close all; clear;
+load('C:\database\KDP_HLB_GP\Dr009_Dr013.mat');
 config.root = "./";
 
-segment = segments.segments(1).segment;
+MAXIMUM_LENGTH_OF_SNIPPET = 2500;
+GENERATE_KERNEL_CORRELATION_PLOTS = true;
+KERNEL_TYPE = "{'covSum', {'covRQiso',{'covPERiso',{@covRQiso}}}}";
+CUTTING_OPTION = "total";
+RATIO_OF_TRAIN_VS_TOTAL = 0.7;
+GENERATE_OFFSET_TIME_PLOTS = false;
+
+segment = segments.segments(2).segment;
 name = segments.segments(1).name;
 % transforming the struct to array for lower calculation time
 [~, segment_m, indexes] = prepareInputForPlanner(segment);
@@ -15,44 +21,10 @@ name = segments.segments(1).name;
 temp_folder_path = config.root;
 plots_folder_name = 'plots';
 set(0,'DefaultFigureVisible','off');
-%% Producing oncoming traffic continuous variable
-% a new indicator is introduced, which represents two things:
-% 1) the time since the last vehicle passed us
-% 2) the time until the next vehicle is in sight
-% this number is characterized by a number between 0 and 1. When a
-% vehicle left us, with a certain gradient its psychological effect is
-% downgraded. If there is a suspected vehicle in sight, it raises the
-% awareness of the driver, with a certain gradient counting up.
-% literature: 2-3 s of short term memory.
-oncomingTraffic = segment_m(:,indexes.oncomingTraffic);
-risingEdges = find(diff(oncomingTraffic)>0);
-fallingEdges = find(diff(oncomingTraffic)<0);
-oncomingTrafficScaled = oncomingTraffic;
-N = 100;
-risingSections = linspace(0,1,N)';
-fallingSections = risingSections(end:-1:1);
-
-oncomingTrafficScaledWithRisingEdges = oncomingTrafficScaled;
-for i=1:length(risingEdges)
-    oncomingTrafficScaledWithRisingEdges(risingEdges(i)-(N-1):risingEdges(i)) = risingSections;
-end
-oncomingTrafficScaledWithFallingEdges = oncomingTrafficScaled;
-for i=1:length(fallingEdges)
-    oncomingTrafficScaledWithFallingEdges(fallingEdges(i):fallingEdges(i)+N-1) = fallingSections;
-end
-
-oncomingTrafficScaledWithFallingEdges = oncomingTrafficScaledWithFallingEdges(1:size(oncomingTraffic,1),1);
-
-oncomingTrafficScaled = max(oncomingTrafficScaledWithRisingEdges, oncomingTrafficScaledWithFallingEdges);
-
-segment_m(:,end+1) = oncomingTrafficScaled;
-indexes.oncomingTrafficScaled = size(segment_m,2);
 
 %% Input  and Output matrix (row: signals, column: time steps)
-type = "snippeting"; 
-
 curveTypes = calculateCurveType(segment_m, indexes, name);
-switch type
+switch CUTTING_OPTION 
     case "snippeting"
         % Segmenting data to snippets with continuation
         j = 1;
@@ -67,9 +39,24 @@ switch type
             end
         end
     case "straights"
-        snippets{1} = segment_m(curveTypes==1, :);
+        straights = segment_m(curveTypes==1, :);
+        if (numel(find(curveTypes==1)) > MAXIMUM_LENGTH_OF_SNIPPET)
+            numberOfSnippets = floor(size(straights,1) / MAXIMUM_LENGTH_OF_SNIPPET);
+            for i=1:numberOfSnippets
+                snippets{i} = straights((i-1)*MAXIMUM_LENGTH_OF_SNIPPET+1:i*MAXIMUM_LENGTH_OF_SNIPPET,:);
+            end
+        else
+            snippets{1} = segment_m(curveTypes==1, :);
+        end
     case "total"
-        snippets{1} = segment_m;
+        if (size(segment_m,1) > MAXIMUM_LENGTH_OF_SNIPPET)
+            numberOfSnippets = floor(size(segment_m,1) / MAXIMUM_LENGTH_OF_SNIPPET);
+            for i=1:numberOfSnippets
+                snippets{i} = segment_m((i-1)*MAXIMUM_LENGTH_OF_SNIPPET+1:i*MAXIMUM_LENGTH_OF_SNIPPET,:);
+            end
+        else
+            snippets{1} = segment_m(:, :);
+        end
     case "curves"
         % Segmenting data to snippets with continuation
         j = 1;
@@ -87,8 +74,8 @@ end
 
 %% loop through data sections
 % PARAMETERS
-shiftOnOutputSelection = 0:4:20;  %shift the offset in time (positive means shift forward)
-p = 0.7; %percentage of evaluation data from entire dataset
+shiftOnOutputSelection = 0;  %shift the offset in time (positive means shift forward)
+p = RATIO_OF_TRAIN_VS_TOTAL; %percentage of evaluation data from entire dataset
 
 for shiftID=1:numel(shiftOnOutputSelection)
     % sweep a selection of shifts
@@ -99,16 +86,18 @@ for shiftID=1:numel(shiftOnOutputSelection)
         ayRel = snippets{i}(:, indexes.accelerationY)-  snippets{i}(:,indexes.c2)*2.*snippets{i}(:,indexes.velocityX).^2;
                 
         input = [snippets{i}(:, indexes.c2)*2, ...
+            snippets{i}(:, indexes.timeToPass), ...
             snippets{i}(:, indexes.oncomingTraffic), ...
             -movmean(snippets{i}(:, indexes.c1),20), ...
             snippets{i}(:, indexes.velocityX).*cos(-atan(movmean(snippets{i}(:, indexes.c1),20))), ...
             snippets{i}(:, indexes.velocityX).*sin(-atan(movmean(snippets{i}(:, indexes.c1),20))), ...
-            snippets{i}(:, indexes.accelerationX)];
+            movmean(snippets{i}(:, indexes.accelerationX),20), ...
+            movmean(snippets{i}(:, indexes.yawRate),20)];
     
         N = size(input,1);
         output = zeros(N,1);
     
-        output(1:N-shiftOnOutput) = -snippets{i}(shiftOnOutput+1:end, indexes.c0); %minus offset due to coordinate system transformation (vehicle to lane vs lane to vehicle)
+        output(1:N-shiftOnOutput) = -movmean(snippets{i}(shiftOnOutput+1:end, indexes.c0),180); %minus offset due to coordinate system transformation (vehicle to lane vs lane to vehicle)
     
             % PLOTTING input - output plots for visual checks
             f = figure('units','normalized','outerposition',[0 0 1 1]);
@@ -138,13 +127,30 @@ for shiftID=1:numel(shiftOnOutputSelection)
     
         %% Define GP 
         meanfunc = [];       % Start with a zero mean prior
-        covfunc = @covSEiso;    % Squared Exponental covariance function
-        %covfunc = @covRQiso;
-    
+        eval(strcat('covfunc = ',KERNEL_TYPE));    % Squared Exponental covariance function
         % ID problem
         
         likfunc = @likGauss;    % Gaussian likelihood
-        hyp = struct('mean', [], 'cov', [0 0], 'lik', -1); % initalize hyper-parameter structure associated with the mean, covariance an likelihood functions
+        if (KERNEL_TYPE == "@covLINiso")
+            hyp = struct('mean', [], 'cov', 0, 'lik', -1); % initalize hyper-parameter structure associated with the mean, covariance an likelihood functions
+        elseif (KERNEL_TYPE == "@covRQiso")
+            hyp = struct('mean', [], 'cov', [0,0,0], 'lik', -1);
+        elseif (KERNEL_TYPE=="{'covPERiso',{@covRQiso}}")
+            hyp = struct('mean', [], 'cov', [0,0,0,0], 'lik', -1);
+        elseif (KERNEL_TYPE == "{'covSum', {'covRQiso',{'covPERiso',{@covRQiso}}}}")
+            hyp = struct('mean', [], 'cov', [0, 0, 0, 0, 0, 0, 0], 'lik', -1);
+        elseif (KERNEL_TYPE == "{'covSum', {'covRQiso',{'covPERiso',{@covRQiso}}, 'covLINiso'}}")
+            hyp = struct('mean', [], 'cov', [0, 0, 0, 0, 0, 0, 0, 0], 'lik', -1);
+        elseif (KERNEL_TYPE == "{'covSum', {'covRQiso','covLINiso'}}")
+            hyp = struct('mean', [], 'cov', [0, 0, 0, 0], 'lik', -1);
+        elseif (KERNEL_TYPE == "{'covSum', {'covSEiso', 'covLINiso'}}")
+            hyp = struct('mean', [], 'cov', [0, 0, 0], 'lik', -1);
+        elseif (KERNEL_TYPE == "{'covSum', {'covSEiso', 'covLINiso', {'covPERiso',{@covRQiso}}}}")
+            hyp = struct('mean', [], 'cov', [0, 0, 0, 0, 0, 0, 0], 'lik', -1);
+        else
+            hyp = struct('mean', [], 'cov', [0, 0], 'lik', -1);
+        end
+
         hyp_opt = minimize(hyp, @gp, -100, @infGaussLik, meanfunc, covfunc, likfunc, input_estimation, output_estimation); % Optimize the marginal likelihood
        
         % Evaluation of validation data
@@ -152,6 +158,41 @@ for shiftID=1:numel(shiftOnOutputSelection)
         
         % Evaluation of estimation data
         [estimationEstimation, deviationEstimation] = gp(hyp_opt, @infGaussLik, meanfunc, covfunc, likfunc, input_estimation, output_estimation, input_estimation); % extract the mean and covarance functions
+
+        if (GENERATE_KERNEL_CORRELATION_PLOTS && i==1 && shiftID==1)
+        % Evaluation of entire range - Kernel shape check
+        input_min = min(input_estimation); input_max = max(input_estimation); 
+        for j=1:size(input_estimation,2)
+            input_range(:,j) = linspace(input_min(j), input_max(j), 20)'; 
+        end
+
+        for k=1:size(input_range,2)
+            f = figure('units','normalized','outerposition',[0 0 1 1]);
+            for n=k:size(input_range,2)
+                for j=1:size(input_range,1)
+                    input_estimation_range = input_range;
+                    input_estimation_range(:,k) = input_estimation_range(j,k);
+                    [estimationRange, deviationRange] = gp(hyp_opt, @infGaussLik, meanfunc, covfunc, likfunc, [input_estimation(:,k), input_estimation(:, n)], output_estimation, [input_estimation_range(:,k), input_estimation_range(:,n)]); % extract the mean and covarance functions
+                    estimationRangeArray(k,n, :,j) = estimationRange;
+                    % the j^th variable in the k^th column is constant
+                    % during this for cycle, which means one column of
+                    % estimationRangeArray(k,n) reflect to the change in
+                    % the 2nd variable, not the k^th variable (but the
+                    % n^th).
+                end
+                subplot(2,4,n);
+                a(:,:) = estimationRangeArray(k,n,:,:);
+                % 1st and 2nd dimensions based on the above comment
+                surf(input_range(:,k), input_range(:,n), a);
+                xlabel(strcat('var', num2str(k))); ylabel(strcat('var', num2str(n)));
+            end
+            savefig(f, fullfile(temp_folder_path, plots_folder_name,...
+                            strcat('Kernel_', num2str(k), '_', num2str(i), '_', name(1:end-4), '.fig')));
+            saveas(f, fullfile(temp_folder_path, plots_folder_name,...
+                            strcat('Kernel_', num2str(k), '_', num2str(i),'_', name(1:end-4), '.png')));
+            close(f);
+        end
+        end
 
         f = figure('units','normalized','outerposition',[0 0 1 1]);
     
@@ -203,7 +244,7 @@ for shiftID=1:numel(shiftOnOutputSelection)
         fprintf("NRMS value based on range: %f\n", NRMS_W);
         fprintf("NRMS value based on absolute maximum: %f\n", NRMS_M);
     
-        KPI{shiftID}(i,:) = [RMS NRMS_W NRMS_M];
+        KPI{shiftID}(i,:) = [RMS NRMS_W NRMS_M hyp_opt.cov];
     
     end
     
@@ -231,6 +272,11 @@ for shiftID=1:numel(shiftOnOutputSelection)
     saveas(f, fullfile(temp_folder_path, plots_folder_name,...
                     strcat('KPI_', num2str(shiftID), name(1:end-4), '.png')));
     close(f);
+
+    if (GENERATE_OFFSET_TIME_PLOTS)
+        [estimationEstimation, deviationEstimation] = gp(hyp_opt, @infGaussLik, meanfunc, covfunc, likfunc, input_estimation, output_estimation, input);
+    end
+
 end % end of shift selection
 
 %% SUMMARY PLOTS OF KPIs
@@ -262,7 +308,7 @@ saveas(f, fullfile(temp_folder_path, plots_folder_name,...
                 strcat('KPISummary_', name(1:end-4), '.png')));
 close(f);
 
-end
+save( fullfile(temp_folder_path, plots_folder_name,'KPI.mat'), 'KPI');
 
 function curveTypes = calculateCurveType(segment_m, indexes, name)
 

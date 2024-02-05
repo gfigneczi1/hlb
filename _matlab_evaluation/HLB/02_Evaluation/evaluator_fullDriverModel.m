@@ -7,7 +7,8 @@ targetSpeed = 30; %kph
 vehiclePath = functional_vehicleModelTest(path, targetSpeed);
     
     %% single simulation
-    parameters.P_npDistances = [0.15, 0.2, 0.25];
+    parameters.P_npDistances = [0.1, 0.2, 0.3];
+    parameters.numberOfNodePoints = 3;
     %parameters.P_ELDM = reshape([2.86078399132926;0.884814215672794;-1.90657794718284;-3.09943416608130;-0.665457759838954;2.30236448840005;0.348462602099426;-0.107035325513227;-0.271014703397729;1.07959046302992;-0.775251579323662;-0.252977961446196;-0.822164501814478;1.36747233514778;0.113183483561418;-0.124241139196637;-0.454142531428492;0.293625990988783;-0.000983031283019174;-0.000983031283019174;-0.000983031283019174], 3,7);
     parameters.P_ELDM = zeros(3,7);
     parameters.P_replanCycle = 10;
@@ -54,15 +55,10 @@ vehiclePath = functional_vehicleModelTest(path, targetSpeed);
     corFine = corridorGeneration(0.5);
     refFine = referenceGeneration(0.5);
     
-    modelID = "modifiedGroundTruth";
-    modelMode = "dynamic";
+    modelID = "groundTruth";
+    modelMode = "kinematic";
     %[pathLite, U, dY, ~, intentionPathLite, vehicleStateMemory] = pathGenerationLite();
-%     for i=2:length(vehicleStateMemory)
-%         steeringAngle(i) = vehicleStateMemory{1,i}.steeringAngle;
-%     end
-%     disp(strcat('Max difference:',num2str(max(abs(pathLite(globalStartIndex:end,2)-intentionPathLite(globalStartIndex:end,2))))));
-%     disp(strcat('Avg difference:',num2str(mean(abs(pathLite(globalStartIndex:end,2)-intentionPathLite(globalStartIndex:end,2))))));
-%     disp(strcat('Std difference:',num2str(std(pathLite(globalStartIndex:end,2)-intentionPathLite(globalStartIndex:end,2)))));
+
     [path, U, dY, ~, intentionPath] = pathGeneration();
     parameters.P_ELDM = reshape(functional_driverModelLearning(U, dY ,8), 3,7);
 
@@ -338,6 +334,14 @@ vehiclePath = functional_vehicleModelTest(path, targetSpeed);
 
 end
 
+function f = objfunc(x0)
+global globalStartIndex globalStopIndex refFine
+
+[path, U, dY, ~, intentionPath] = pathGeneration();
+
+
+end
+
 function dlV = generateValidationData(batch, dlV)
 global modelID segment_m indexes vehicleState globalStartIndex
     % Init vehicle state
@@ -578,8 +582,8 @@ function [path, U, dY, plannedPath, intentionPath, vehicleStateMemory] = pathGen
                 vehicleState = loadModel(vehicleState);
                 vehicleState = speedController(vehicleState);
             end
-            vehicleState.steeringAngle = controller(posteriorPath, vehicleState);            
-            
+
+            vehicleState.steeringAngle = controller(posteriorPath, vehicleState); 
             % vehicle model
             vehicleState = vehicleModel(vehicleState, dT, modelMode, parameters.vehicleParameters);
             
@@ -960,6 +964,7 @@ if (mode=="kinematic")
     vehicleState.ay = vehicleState.vx*vehicleState.yawRate;
     vehicleState.t0 = segment_m(index, indexes.q_T0);    
     vehicleState.steeringAngle = 0;
+    vehicleState.time = 0;
 elseif (mode =="dynamic")
     lf = 1; lr = 1.5; r = 0.309725;
     
@@ -1253,16 +1258,17 @@ function [path, u, dy] = groundTruth (scenario, indexes, previousPath)
     for j=1:length(indeces)-1
         kappa_nominal(j,1) = mean(scenario(indeces(j) + nearestPoint(1,1):indeces(j+1) + nearestPoint(1,1),indexes.c2));
     end
+    kappa_nominal = kappa_nominal*mean(scenario(:, indexes.velocityX))^2;
     % scaling of the predictor variables
-    kappa_lim = 0.001;
+    kappa_lim = 0.001*54^2;
 %     u_lim = [ones(6,1)*kappa_lim; 1];
 %     u = [max(kappa_nominal,0); min(kappa_nominal,0); 1];
-    u_lim = ones(3,1)*kappa_lim;
+    u_lim = ones(length(indeces)-1,1)*kappa_lim;
     u = kappa_nominal;
     u = u./u_lim;
     
     % Reference calculation - transformed to local coordinate frame
-    dy(1:3,1) = (Y_reference - Y_nominal).*cos(theta_nominal);
+    dy(1:length(indeces)-1,1) = (Y_reference - Y_nominal).*cos(theta_nominal);
 
     %% step 3: calculating final node points
     Y = Y_nominal + dy.*cos(theta_nominal);
@@ -1737,7 +1743,7 @@ function [c_3polynomials, U, dy, X,Y,theta] = eldmLite (scenario, indexes, vehic
     % [2] previous path - the previously planned trajectory, used for
     % initializing the new trajectory
     % Parameters:
-    N = 3; % number of node points
+    N = parameters.numberOfNodePoints; % number of node points
     %% step 0: Model input reconstruction
     % building U vector with average kappa values
     % scenario starts at ego position - NOTE: the commented solution is

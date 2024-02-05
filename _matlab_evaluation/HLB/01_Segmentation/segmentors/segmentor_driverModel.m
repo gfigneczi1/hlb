@@ -16,7 +16,7 @@ function [segments] = segmentor_driverModel(input_folder)
     % zeros, then the signal checker here will fail to detect missing
     % signals
     mandatorySignals = ["VelocityX_ESP", "GPS_status", "LongPos_abs", "LatPos_abs", "GPS_time"];
-    
+    roadTypeFilter = 2;
       
     segmentID = 1;
     data = cell(1,length(matFiles));
@@ -57,6 +57,8 @@ function [segments] = segmentor_driverModel(input_folder)
                 rawData.Y_abs = rawData.LatPos_abs * 111.32*1000;
                 if (contains(matFiles(fileID).name, "62B") || contains(matFiles(fileID).name, "south"))
                     rawData.theta_calc = theta_recalc(rawData, 1);
+                elseif (contains(matFiles(fileID).name, "M7A") && roadTypeFilter==2)
+                    rawData.theta_calc = theta_recalc(rawData, 1);
                 else
                     rawData.theta_calc = theta_recalc(rawData, 0);
                 end
@@ -71,7 +73,7 @@ function [segments] = segmentor_driverModel(input_folder)
                 rawData = structure_filter(rawData, "lanevalidity", 1, "EQ");
                 rawData = structure_filter(rawData, "localization", 1, "EQ");
                 % 1: country road; 2: highway
-                rawData = structure_filter(rawData, "roadType", 1, "EQ");
+                rawData = structure_filter(rawData, "roadType", roadTypeFilter, "EQ");
                 %rawData = structure_filter(rawData, "isStraight", 1, "EQ");
                 rawData = structure_filter(rawData, "invalidSpeed", 0, "EQ");
                 rawData = structure_filter(rawData, "Left_Index", 0, "EQ");
