@@ -5,6 +5,8 @@ globalPath = path.traj_local;
 globalPath = globalPath(190:end,:);
 globalPath = globalPath- globalPath(1,:);
 
+GENERATE_MAP_PLOTS = false;
+
 global x0 parameters y_ref yRefVectorGlobal orientationRefVectorGlobal
 parameters.Tsolve = 0.02; % only relevant when self-implemented solver is used
 parameters.vx = 30; % m/s
@@ -16,7 +18,7 @@ parameters.Lf = 1.2; % m
 parameters.m = 1500; % kg
 parameters.Iz = 2000; % kg*m^2
 
-parameters.alfa = [0.1 0; 0 0.001];
+parameters.alfa = [0.1 0; 0 0.1];
 parameters.kappa = 1;
 parameters.beta = 0.0;
 parameters.Sresidual = 0.0;
@@ -86,12 +88,14 @@ for k=1:N
 
     % state update
     x_k = F(x_k, u_k, Ts);  
+    if(GENERATE_MAP_PLOTS)
     subplot(2,1,1);
     plot(x_saved(k,3), x_saved(k,4), 'kx', x(3, :), x(4, :), 'r--', globalPath(:,1), globalPath(:,2), 'b:'); hold on; grid on;
     xlim([min(x_saved(:,3)) max(10,max(x(:,3)))]);
     subplot(2,1,2);
     plot(x_saved(k,3), u_saved(k), 'kx', x(3, :), U, 'r--'); hold on; grid on; xlabel('X(m)'); ylabel('\delta_f')
     pause(0.1);
+    end
 
     clc;
     fprintf("Iteration number %d / %d", k, N);
@@ -114,8 +118,8 @@ function f = objfunx(U)
     end    
     f = f + S(phi(parameters.Th,U,x0), parameters.Th);
 
-    %plot(x(3,:), x(4,:), 'r', x(3,:), yRefVectorGlobal(1:end-1), 'k');
-    %pause(0.05);
+    plot(x(3,:), x(4,:), 'r', x(3,:), yRefVectorGlobal(1:end-1), 'k');
+    pause(0.05);
 end
 
 function fl = l(x,u, t_k)

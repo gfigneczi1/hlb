@@ -7,8 +7,8 @@ load('C:\database\KDP_HLB_GP\Dr009_Dr013.mat');
 config.root = "./";
 
 MAXIMUM_LENGTH_OF_SNIPPET = 2500;
-GENERATE_KERNEL_CORRELATION_PLOTS = true;
-KERNEL_TYPE = "{'covSum', {'covRQiso',{'covPERiso',{@covRQiso}}}}";
+GENERATE_KERNEL_CORRELATION_PLOTS = false;
+KERNEL_TYPE = "{'covSum', {'covRQiso',{'covPERiso',{@covRQiso}}, {'covProd', {'covLINiso', 'covLINiso'}}}}";
 CUTTING_OPTION = "total";
 RATIO_OF_TRAIN_VS_TOTAL = 0.7;
 GENERATE_OFFSET_TIME_PLOTS = false;
@@ -76,6 +76,9 @@ end
 % PARAMETERS
 shiftOnOutputSelection = 0;  %shift the offset in time (positive means shift forward)
 p = RATIO_OF_TRAIN_VS_TOTAL; %percentage of evaluation data from entire dataset
+inputVariations = generateInputVariations(8);
+
+for missingInputID=211:size(inputVariations,1)
 
 for shiftID=1:numel(shiftOnOutputSelection)
     % sweep a selection of shifts
@@ -93,6 +96,8 @@ for shiftID=1:numel(shiftOnOutputSelection)
             snippets{i}(:, indexes.velocityX).*sin(-atan(movmean(snippets{i}(:, indexes.c1),20))), ...
             movmean(snippets{i}(:, indexes.accelerationX),20), ...
             movmean(snippets{i}(:, indexes.yawRate),20)];
+        
+        input = input(:, find(inputVariations(missingInputID,:)==1));
     
         N = size(input,1);
         output = zeros(N,1);
@@ -147,6 +152,8 @@ for shiftID=1:numel(shiftOnOutputSelection)
             hyp = struct('mean', [], 'cov', [0, 0, 0], 'lik', -1);
         elseif (KERNEL_TYPE == "{'covSum', {'covSEiso', 'covLINiso', {'covPERiso',{@covRQiso}}}}")
             hyp = struct('mean', [], 'cov', [0, 0, 0, 0, 0, 0, 0], 'lik', -1);
+        elseif (KERNEL_TYPE == "{'covSum', {'covRQiso',{'covPERiso',{@covRQiso}}, {'covProd', {'covLINiso', 'covLINiso'}}}}")
+            hyp = struct('mean', [], 'cov', [0, 0, 0, 0, 0, 0, 0, 0, 0], 'lik', -1);
         else
             hyp = struct('mean', [], 'cov', [0, 0], 'lik', -1);
         end
@@ -247,6 +254,8 @@ for shiftID=1:numel(shiftOnOutputSelection)
         KPI{shiftID}(i,:) = [RMS NRMS_W NRMS_M hyp_opt.cov];
     
     end
+
+    KPIsum(missingInputID, :) = [mean(KPI{1}(:,2)) max(KPI{1}(:,2)) std(KPI{1}(:,3))];
     
     f = figure();
     subplot(3,1,1);
@@ -310,6 +319,9 @@ close(f);
 
 save( fullfile(temp_folder_path, plots_folder_name,'KPI.mat'), 'KPI');
 
+end
+save( fullfile(temp_folder_path, plots_folder_name,'KPIsum.mat'), 'KPIsum');
+
 function curveTypes = calculateCurveType(segment_m, indexes, name)
 
 global temp_folder_path plots_folder_name
@@ -368,5 +380,11 @@ end
 
 end
 
+function inputVariations = generateInputVariations(numberOfInputs)
+
+x = 1:2^numberOfInputs-1;
+inputVariations = dec2bin(x', numberOfInputs) == '1';
+
+end
 
 
