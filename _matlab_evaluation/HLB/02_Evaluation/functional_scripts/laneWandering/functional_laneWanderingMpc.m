@@ -3,7 +3,7 @@ function functional_laneWanderingMpc(segments, config)
 global snippetsNegOffs i interventionPoint snippetLocalTrajectory snippetLocalVehiclePath snippetLength parametersMpc
 
 RESIMULATE_OPTIMIZED_PARAMETERS = false;
-MAXIMUM_NUMBER_OF_SNIPPETS = 6;
+MAXIMUM_NUMBER_OF_SNIPPETS = 15;
 
 temp_folder_path = config.root;
 plots_folder_name = 'plots';
@@ -53,7 +53,7 @@ for fileID=1:size(segments.segments,2)
     % compensate
     % prediction horizon is estimated based on compensation length
     compensationLength = 0;
-    snippetsNegOffs = snippetsPosOffs;
+    %snippetsNegOffs = snippetsPosOffs;
 
     for i=1:length(snippetsNegOffs)
         compensationLength = compensationLength+(snippetsNegOffs(i).relevantPoints.snippetStop - snippetsNegOffs(i).relevantPoints.snippetStart);

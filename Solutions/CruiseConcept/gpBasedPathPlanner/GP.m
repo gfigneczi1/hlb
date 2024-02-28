@@ -7,11 +7,15 @@ load('C:\database\KDP_HLB_GP\Dr009_Dr013.mat');
 config.root = "./";
 
 MAXIMUM_LENGTH_OF_SNIPPET = 2500;
-GENERATE_KERNEL_CORRELATION_PLOTS = false;
+GENERATE_KERNEL_CORRELATION_PLOTS = true;
 KERNEL_TYPE = "{'covSum', {'covRQiso',{'covPERiso',{@covRQiso}}, {'covProd', {'covLINiso', 'covLINiso'}}}}";
 CUTTING_OPTION = "total";
 RATIO_OF_TRAIN_VS_TOTAL = 0.7;
 GENERATE_OFFSET_TIME_PLOTS = false;
+MAXIMUM_PREVIEW_DISTANCE = 140; % from within preview information is extracted, unit: m
+OUTPUT_STEP_DISTANCE = 10; % in meters
+NUMBER_OF_PREVIEW_INFORMATION = 1; % maximum number
+OUTPUT_SHIFT = 0; %10:OUTPUT_STEP_DISTANCE:MAXIMUM_PREVIEW_DISTANCE; % preview distance is divided into sections where the output will be predicted
 
 segment = segments.segments(2).segment;
 name = segments.segments(1).name;
@@ -74,19 +78,45 @@ end
 
 %% loop through data sections
 % PARAMETERS
-shiftOnOutputSelection = 0;  %shift the offset in time (positive means shift forward)
+shiftOnOutputSelection = OUTPUT_SHIFT;  %shift the offset in time (positive means shift forward)
 p = RATIO_OF_TRAIN_VS_TOTAL; %percentage of evaluation data from entire dataset
+
 inputVariations = generateInputVariations(8);
+inputVariations = ones(1,8);
 
-for missingInputID=211:size(inputVariations,1)
+dT = mean(diff(snippets{i}(:, indexes.q_T0)));
 
-for shiftID=1:numel(shiftOnOutputSelection)
-    % sweep a selection of shifts
-    shiftOnOutput = shiftOnOutputSelection(shiftID);
+for numberOfPreviewInformation=1:NUMBER_OF_PREVIEW_INFORMATION
+    previewSegmentLength = MAXIMUM_PREVIEW_DISTANCE/numberOfPreviewInformation; % unit: m
+    %inputVariations = ones(1, 8+numberOfPreviewInformation); inputVariations(1) = 0;
 
-    for i=1:length(snippets)
-    
-        ayRel = snippets{i}(:, indexes.accelerationY)-  snippets{i}(:,indexes.c2)*2.*snippets{i}(:,indexes.velocityX).^2;
+for missingInputID=1:size(inputVariations,1)
+
+for shiftID=1:numel(OUTPUT_SHIFT)
+    for i=1:min(5,length(snippets))
+        dx = snippets{i}(:, indexes.velocityX)*dT;
+
+        % sweep a selection of shifts
+        shiftOnOutput = [1:1:size(snippets{i}(:,indexes.q_T0),1)]'+floor(OUTPUT_SHIFT(shiftID)./dx);
+
+        inputPreview = [];
+        % input preview set is currently the mean curvature
+        for previewInformationID = 1:numberOfPreviewInformation            
+            if (numberOfPreviewInformation==1)
+            else
+                previewSegmentFrom = [1:1:size(snippets{i}(:,indexes.q_T0),1)]'+floor((previewSegmentLength*(previewInformationID-1))./dx);
+                previewSegmentTo = [1:1:size(snippets{i}(:,indexes.q_T0),1)]'+floor((previewSegmentLength*previewInformationID)./dx);
+                for dataPoint = 1:size(snippets{i}(:,indexes.q_T0),1)
+                    if (previewSegmentTo(dataPoint) > size(snippets{i}(:,indexes.q_T0),1))
+                        break;
+                    else
+                        inputPreview(dataPoint,previewInformationID) = mean(snippets{i}(previewSegmentFrom(dataPoint):previewSegmentTo(dataPoint), indexes.c2)*2);
+                    end
+                end
+            end
+        end
+
+        %Npreview = size(inputPreview,1);
                 
         input = [snippets{i}(:, indexes.c2)*2, ...
             snippets{i}(:, indexes.timeToPass), ...
@@ -97,13 +127,28 @@ for shiftID=1:numel(shiftOnOutputSelection)
             movmean(snippets{i}(:, indexes.accelerationX),20), ...
             movmean(snippets{i}(:, indexes.yawRate),20)];
         
+        input = normAndCentral(input);
+
+        %input = [input(1:Npreview,:), inputPreview];
+        
         input = input(:, find(inputVariations(missingInputID,:)==1));
     
         N = size(input,1);
         output = zeros(N,1);
+
+%         for shiftIDonOutput=1:N
+%             if (shiftOnOutput(shiftIDonOutput) > N)
+%                 break;
+%             else
+%                 output(shiftIDonOutput,1) = -snippets{i}(shiftOnOutput(shiftIDonOutput), indexes.c0);
+%             end
+%         end
     
-        output(1:N-shiftOnOutput) = -movmean(snippets{i}(shiftOnOutput+1:end, indexes.c0),180); %minus offset due to coordinate system transformation (vehicle to lane vs lane to vehicle)
+        % simple generation of output shift
+        output(1:N-shiftOnOutput) = -snippets{i}(shiftOnOutput+1:end, indexes.c0); %-movmean(snippets{i}(shiftOnOutput+1:end, indexes.c0),180); %minus offset due to coordinate system transformation (vehicle to lane vs lane to vehicle)
     
+        output = normAndCentral(output);
+        
             % PLOTTING input - output plots for visual checks
             f = figure('units','normalized','outerposition',[0 0 1 1]);
             subplot(size(input,2)+1,1,1);
@@ -170,16 +215,24 @@ for shiftID=1:numel(shiftOnOutputSelection)
         % Evaluation of entire range - Kernel shape check
         input_min = min(input_estimation); input_max = max(input_estimation); 
         for j=1:size(input_estimation,2)
-            input_range(:,j) = linspace(input_min(j), input_max(j), 20)'; 
+            input_range(:,j) = linspace(input_min(j), input_max(j), 100)'; 
         end
-
+        
+        variables = ["$\kappa$", "$t_{pass}$", "$obj_{type}$", "$\Theta$", "$v_x$", "$v_y$", "$a_x$", "$\omega$"];
+        
         for k=1:size(input_range,2)
             f = figure('units','normalized','outerposition',[0 0 1 1]);
-            for n=k:size(input_range,2)
+            set(f,'defaulttextInterpreter','latex') ;
+            set(f, 'defaultAxesTickLabelInterpreter','latex');  
+            set(f, 'defaultLegendInterpreter','latex');
+            for n=k+1:size(input_range,2)
                 for j=1:size(input_range,1)
                     input_estimation_range = input_range;
-                    input_estimation_range(:,k) = input_estimation_range(j,k);
-                    [estimationRange, deviationRange] = gp(hyp_opt, @infGaussLik, meanfunc, covfunc, likfunc, [input_estimation(:,k), input_estimation(:, n)], output_estimation, [input_estimation_range(:,k), input_estimation_range(:,n)]); % extract the mean and covarance functions
+                    input_estimation_range(:,k) = input_range(j,k);
+                    nonIndexed = 1:1:size(input_range,2);
+                    input_estimation_range(:,nonIndexed~=k & nonIndexed~=n) = 0;
+                    [estimationRange, deviationRange] = gp(hyp_opt, @infGaussLik, meanfunc, covfunc, likfunc, input_estimation, output_estimation, input_estimation_range); % extract the mean and covarance functions
+
                     estimationRangeArray(k,n, :,j) = estimationRange;
                     % the j^th variable in the k^th column is constant
                     % during this for cycle, which means one column of
@@ -190,8 +243,14 @@ for shiftID=1:numel(shiftOnOutputSelection)
                 subplot(2,4,n);
                 a(:,:) = estimationRangeArray(k,n,:,:);
                 % 1st and 2nd dimensions based on the above comment
+%                 scatter3(input_range(:,k), ...
+%                	input_range(:,n), ...
+%                 estimationRange, ...
+%                 1, ...
+%                 estimationRange);
                 surf(input_range(:,k), input_range(:,n), a);
-                xlabel(strcat('var', num2str(k))); ylabel(strcat('var', num2str(n)));
+                xlabel(variables(k)); ylabel(variables(n));
+                set(gca,'FontSize', 14);
             end
             savefig(f, fullfile(temp_folder_path, plots_folder_name,...
                             strcat('Kernel_', num2str(k), '_', num2str(i), '_', name(1:end-4), '.fig')));
@@ -251,7 +310,7 @@ for shiftID=1:numel(shiftOnOutputSelection)
         fprintf("NRMS value based on range: %f\n", NRMS_W);
         fprintf("NRMS value based on absolute maximum: %f\n", NRMS_M);
     
-        KPI{shiftID}(i,:) = [RMS NRMS_W NRMS_M hyp_opt.cov];
+        KPI{numberOfPreviewInformation, shiftID}(i,:) = [RMS NRMS_W NRMS_M hyp_opt.cov];
     
     end
 
@@ -259,19 +318,19 @@ for shiftID=1:numel(shiftOnOutputSelection)
     
     f = figure();
     subplot(3,1,1);
-    plot(KPI{shiftID}(:,1), 'Marker','x', 'LineWidth', 1.5, 'color', 'b');
+    plot(KPI{numberOfPreviewInformation,shiftID}(:,1), 'Marker','x', 'LineWidth', 1.5, 'color', 'b');
     grid on;
     title(strcat('RMS value for', {' '}, num2str(shiftOnOutput), {' '}, 'shift on output'));
     ylabel('offset(m)'); xlabel('epoch');
     
     subplot(3,1,2);
-    plot(KPI{shiftID}(:,2), 'Marker','x', 'LineWidth', 1.5, 'color', 'b');
+    plot(KPI{numberOfPreviewInformation,shiftID}(:,2), 'Marker','x', 'LineWidth', 1.5, 'color', 'b');
     grid on;
     title(strcat('NRMS_W value for', {' '}, num2str(shiftOnOutput), {' '}, 'shift on output'));
     xlabel('epoch');
     
     subplot(3,1,3);
-    plot(KPI{shiftID}(:,3), 'Marker','x', 'LineWidth', 1.5, 'color', 'b');
+    plot(KPI{numberOfPreviewInformation,shiftID}(:,3), 'Marker','x', 'LineWidth', 1.5, 'color', 'b');
     grid on;
     title(strcat('NRMS_M value for', {' '}, num2str(shiftOnOutput), {' '}, 'shift on output'));
     xlabel('epoch');
@@ -291,36 +350,37 @@ end % end of shift selection
 %% SUMMARY PLOTS OF KPIs
 f = figure();
 
-for i=1:length(KPI)
+for i=1:size(KPI,2)
     subplot(3,1,1);
-    plot(shiftOnOutputSelection(i), mean(KPI{i}(:,1)), 'bo');
+    plot(shiftOnOutputSelection(i), mean(KPI{numberOfPreviewInformation,i}(:,1)), 'bo');
     hold on; grid on;
     title('Mean RMS for various selection')
     xlabel('shift on output'); ylabel('offset RMS(m)');
 
     subplot(3,1,2);
-    plot(shiftOnOutputSelection(i), mean(KPI{i}(:,2)), 'bo');
+    plot(shiftOnOutputSelection(i), mean(KPI{numberOfPreviewInformation,i}(:,2)), 'bo');
     hold on; grid on;
     title('Mean NRMS_W for various selection')
     xlabel('shift on output'); ylabel('offset NRMS');
 
     subplot(3,1,3);
-    plot(shiftOnOutputSelection(i), mean(KPI{i}(:,3)), 'bo');
+    plot(shiftOnOutputSelection(i), mean(KPI{numberOfPreviewInformation,i}(:,3)), 'bo');
     hold on; grid on;
     title('Mean NRMS_M for various selection')
     xlabel('shift on output'); ylabel('offset NRMS');
 end
 
 savefig(f, fullfile(temp_folder_path, plots_folder_name,...
-                            strcat('KPISummary_', name(1:end-4), '.fig')));
+                            strcat('KPISummary_', name(1:end-4), '_', num2str(numberOfPreviewInformation), '.fig')));
 saveas(f, fullfile(temp_folder_path, plots_folder_name,...
-                strcat('KPISummary_', name(1:end-4), '.png')));
+                strcat('KPISummary_', name(1:end-4), '_', num2str(numberOfPreviewInformation), '.png')));
 close(f);
 
 save( fullfile(temp_folder_path, plots_folder_name,'KPI.mat'), 'KPI');
 
 end
 save( fullfile(temp_folder_path, plots_folder_name,'KPIsum.mat'), 'KPIsum');
+end
 
 function curveTypes = calculateCurveType(segment_m, indexes, name)
 
@@ -387,4 +447,9 @@ inputVariations = dec2bin(x', numberOfInputs) == '1';
 
 end
 
+function input = normAndCentral(input)
+for i=1:size(input,2)
+    input(:,i) = (input(:,i)-mean(input(:,i)))/max(abs(input(:,i)));
+end
+end
 
