@@ -14,11 +14,16 @@ function evaluator_nodePointDefinition(segments,config)
 % of a patent, utility model or design.
 % @version 1.0
 
-global P3in segment_m startIdx endIdx
+global P3in segment_m startIdx endIdx model_ver options
+
+model_ver = 0; % ground truth
 
 options.parameters.P1_vector = linspace(0,240,50);
 options.parameters.P2_vector = linspace(0,240,50);
 options.parameters.P3_vector = linspace(0,240,50);
+options.parameters.Np = 3;
+options.parameters.mindP = 10;
+options.parameters.maxDist = 250;
 options.startIdxSurface = 3000;
 options.endIdxSurface = 3000;
 options.startIdxInitvalues = 1000;

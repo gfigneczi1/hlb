@@ -5,9 +5,9 @@ if (isempty(traj))
 else
     ego_path = reference;
     if (ver == 0)
-        loss = (abs(ego_path-traj)); 
-        loss = sum(sum((loss)));
-        loss = loss/(size(ego_path,2));
+        m = sqrt((ego_path(:,1)-traj(:,1)).^2+(ego_path(:,2)-traj(:,2)).^2);
+        loss = sqrt(sum((ego_path(:,1)-traj(:,1)).^2+(ego_path(:,2)-traj(:,2)).^2)/size(ego_path,1));
+        loss = loss/(max(m)-min(m));
     elseif (ver == 1)
         loss = 0;
         for i=1:size(traj,1)

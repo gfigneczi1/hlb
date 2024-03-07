@@ -23,6 +23,8 @@ oncomingTraffic = zeros(1,size(segment.q_T0,2));
 trafficInFront = zeros(1,size(segment.q_T0,2));
 timeToPass = zeros(1,size(segment.q_T0,2));
 
+segment.q_T0 = segment.q_T0 - segment.q_T0(1);
+
 for i=1:size(traffic,1)
     if(contains(convertCharsToStrings(traffic.objType{i}), "normal") | isempty(traffic.objType{i}))
         startTime = find(segment.q_T0 > traffic.trafficStart(i), 1);

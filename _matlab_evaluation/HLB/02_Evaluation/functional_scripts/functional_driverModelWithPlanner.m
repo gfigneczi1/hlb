@@ -163,7 +163,7 @@ function [traj, ref, cor, corLeft, corRight, orient, curv, GT_U, GT_Y, validPoin
                     
                     % 5. calculating the driver model outputs
                     [X, Y, theta, indeces, ~, U] = driverModelPlanner(subsegment_m, P, corridorPlannerFrameResampled, P3in, model_ver);
-
+                    Np = length(indeces);
                     if (any(diff(indeces)==0))
                         % some break in the measurement is found, re-init
                         % everything
@@ -174,16 +174,12 @@ function [traj, ref, cor, corLeft, corRight, orient, curv, GT_U, GT_Y, validPoin
                         counter = 1; % counter, how far we went in the previous trajectory
                     else
                         
-                        % 6. calculation of new trajectory (in local frame)
-                        index = find(refPlannerFrame(:,1) >=X(2),1);
-                        refPlannerFrame(indeces(2),2) = interp1(refPlannerFrame(index-1:index,1),refPlannerFrame(index-1:index,2),X(2));
-                        refPlannerFrame(indeces(2),1) = X(2);
-                        index = find(refPlannerFrame(:,1) >=X(3),1);
-                        refPlannerFrame(indeces(3),2) = interp1(refPlannerFrame(index-1:index,1),refPlannerFrame(index-1:index,2),X(3));
-                        refPlannerFrame(indeces(3),1) = X(3);
-                        index = find(refPlannerFrame(:,1) >=X(4),1);
-                        refPlannerFrame(indeces(4),2) = interp1(refPlannerFrame(index-1:index,1),refPlannerFrame(index-1:index,2),X(4));
-                        refPlannerFrame(indeces(4),1) = X(4);
+                        for np=2:length(indeces)
+                            % 6. calculation of new trajectory (in local frame)
+                            index = find(refPlannerFrame(:,1) >=X(np),1);
+                            refPlannerFrame(indeces(np),2) = interp1(refPlannerFrame(index-1:index,1),refPlannerFrame(index-1:index,2),X(np));
+                            refPlannerFrame(indeces(np),1) = X(np);
+                        end
                         
                         switch use
                             case 0
@@ -193,7 +189,7 @@ function [traj, ref, cor, corLeft, corRight, orient, curv, GT_U, GT_Y, validPoin
                                 anchorPoints = [X; Y; theta];
                                 GT_Y = [GT_Y Y-corridorPlannerFrameResampled(indeces,2)];
                                 GT_theta = [GT_theta theta];
-                                anchorPoints_array = [anchorPoints_array anchorPoints(5:8)-corridorPlannerFrameResampled(indeces,2)];
+                                anchorPoints_array = [anchorPoints_array anchorPoints(Np+1:Np+Np)-corridorPlannerFrameResampled(indeces,2)];
                                 GT_U = [GT_U U];
                             case 1
                                 % LDM
@@ -244,9 +240,7 @@ function [traj, ref, cor, corLeft, corRight, orient, curv, GT_U, GT_Y, validPoin
                                 anchorPoints_array = [anchorPoints_array anchorPoints(5:8)-corridorPlannerFrameResampled(indeces,2)];
                                 GT_U = [GT_U U];
                         end
-                                
-                        
-                        
+
                         [trajPlannerFrame, segmentsParam] = trajectory_planner(anchorPoints, indeces, refPlannerFrame,0);
                         trajectoryPreviousPlannerFrame = trajPlannerFrame; %returning previous trajectory in local frame
 

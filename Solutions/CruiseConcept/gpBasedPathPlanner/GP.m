@@ -7,17 +7,17 @@ load('C:\database\KDP_HLB_GP\Dr009_Dr013.mat');
 config.root = "./";
 
 MAXIMUM_LENGTH_OF_SNIPPET = 2500;
-GENERATE_KERNEL_CORRELATION_PLOTS = true;
+GENERATE_KERNEL_CORRELATION_PLOTS = false;
 KERNEL_TYPE = "{'covSum', {'covRQiso',{'covPERiso',{@covRQiso}}, {'covProd', {'covLINiso', 'covLINiso'}}}}";
 CUTTING_OPTION = "total";
 RATIO_OF_TRAIN_VS_TOTAL = 0.7;
-GENERATE_OFFSET_TIME_PLOTS = false;
+GENERATE_OFFSET_TIME_PLOTS = true;
 MAXIMUM_PREVIEW_DISTANCE = 140; % from within preview information is extracted, unit: m
 OUTPUT_STEP_DISTANCE = 10; % in meters
 NUMBER_OF_PREVIEW_INFORMATION = 1; % maximum number
 OUTPUT_SHIFT = 0; %10:OUTPUT_STEP_DISTANCE:MAXIMUM_PREVIEW_DISTANCE; % preview distance is divided into sections where the output will be predicted
 
-segment = segments.segments(2).segment;
+segment = segments.segments(2).segment; % Driver 13
 name = segments.segments(1).name;
 % transforming the struct to array for lower calculation time
 [~, segment_m, indexes] = prepareInputForPlanner(segment);
@@ -93,7 +93,7 @@ for numberOfPreviewInformation=1:NUMBER_OF_PREVIEW_INFORMATION
 for missingInputID=1:size(inputVariations,1)
 
 for shiftID=1:numel(OUTPUT_SHIFT)
-    for i=1:min(5,length(snippets))
+    for i=1:min(20,length(snippets))
         dx = snippets{i}(:, indexes.velocityX)*dT;
 
         % sweep a selection of shifts
@@ -295,6 +295,29 @@ for shiftID=1:numel(OUTPUT_SHIFT)
         saveas(f, fullfile(temp_folder_path, plots_folder_name,...
                         strcat('Snippets_', num2str(i), '_', num2str(shiftID), name(1:end-4), '.png')));
         close(f);
+
+        if (GENERATE_OFFSET_TIME_PLOTS)
+            [estimationEstimation, deviationEstimation] = gp(hyp_opt, @infGaussLik, meanfunc, covfunc, likfunc, input_estimation, output_estimation, input);
+            f = figure();
+            confidenceBounds = [estimationEstimation+2*sqrt(deviationEstimation); flip(estimationEstimation-2*sqrt(deviationEstimation),1)];
+            confidencePoints = (1:1:numel(estimationEstimation))';
+        
+            fill([confidencePoints; flip(confidencePoints)], confidenceBounds, 'y', 'DisplayName', '95% confidence');
+            hold on;
+            plot(estimationEstimation,'LineWidth', 2, 'color', 'k', 'LineStyle','--', 'DisplayName', 'estimated by GP');    
+            ylabel('offset');
+            grid on;
+            plot(output, 'LineWidth', 2, 'LineStyle', ':', 'color', 'b', 'DisplayName','validation data');
+            legend;
+            ylabel('offset(m)');
+            xlabel('samples');
+    
+            savefig(f, fullfile(temp_folder_path, plots_folder_name,...
+                                strcat('TimePlot_', num2str(i), name(1:end-4), '.fig')));
+            saveas(f, fullfile(temp_folder_path, plots_folder_name,...
+                            strcat('TimePlot_', num2str(i), name(1:end-4), '.png')));
+            close(f);
+        end
     
         %% KPI-s
         % RMS calculation
@@ -340,10 +363,6 @@ for shiftID=1:numel(OUTPUT_SHIFT)
     saveas(f, fullfile(temp_folder_path, plots_folder_name,...
                     strcat('KPI_', num2str(shiftID), name(1:end-4), '.png')));
     close(f);
-
-    if (GENERATE_OFFSET_TIME_PLOTS)
-        [estimationEstimation, deviationEstimation] = gp(hyp_opt, @infGaussLik, meanfunc, covfunc, likfunc, input_estimation, output_estimation, input);
-    end
 
 end % end of shift selection
 

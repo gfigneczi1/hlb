@@ -13,6 +13,8 @@ ref = data(:,2);
 time = data(:,1);
 % normalizing output
 refNorm = (ref-ref(1))/(ref(end)-ref(1));
+vx = mean(data(:,4));
+A = data(end,3);
 
 D = 0.5; w = 1; tdelay = 3;
 
@@ -21,14 +23,17 @@ Frames = [];
 options = optimset('PlotFcns',@optimplotfval);
 x = fminsearch(@objectivefcn1,[D w tdelay]);
 
-myVideo = VideoWriter(strcat("Optimization", num2str(i),".avi"));
-myVideo.FrameRate = 12;
-open(myVideo);
-writeVideo(myVideo,Frames);
-close(myVideo);
+fprintf("files %d from %d\n", i, size(csvFiles,1));
+
+% myVideo = VideoWriter(strcat("Optimization", num2str(i),".avi"));
+% myVideo.FrameRate = 12;
+% open(myVideo);
+% writeVideo(myVideo,Frames);
+% close(myVideo);
 
 output(i).name = csvFiles(i).name;
-output(i).parameters = x(1:2); 
+output(i).parameters = x(1:2);
+output(i).testCase = [vx A];
 
 end
 
@@ -40,24 +45,24 @@ end
 
 f = sum((y' - refNorm).^2);
 
-idx = find(time>x(3),1);
-plot(time(1:idx(1,1)-1),y(1:idx(1,1)-1), 'color', 'k');
-hold on;
-plot(time(idx(1,1):end),y(idx(1,1):end), 'color', 'm', 'LineWidth',1.5);
-plot(time,refNorm);
-title(num2str(f));
-grid on;
-
-str = strcat("D:", num2str(x(1)));
-text(0.15, 0.8, str, 'Color', 'k', 'BackgroundColor', 'w', 'FontSize', 12);
-str = strcat("w0:", num2str(x(2)));
-text(0.15, 0.7, str, 'Color', 'k', 'BackgroundColor', 'w', 'FontSize', 12);
-str = strcat("tdelay:", num2str(x(3)));
-text(0.15, 0.6, str, 'Color', 'k', 'BackgroundColor', 'w', 'FontSize', 12);
-xlabel('time(s)');ylabel('speed normalized to settle value');
-hold off;
-
-Frames = [Frames getframe(gcf)]; 
+% idx = find(time>x(3),1);
+% plot(time(1:idx(1,1)-1),y(1:idx(1,1)-1), 'color', 'k');
+% hold on;
+% plot(time(idx(1,1):end),y(idx(1,1):end), 'color', 'm', 'LineWidth',1.5);
+% plot(time,refNorm);
+% title(num2str(f));
+% grid on;
+% 
+% str = strcat("D:", num2str(x(1)));
+% text(0.15, 0.8, str, 'Color', 'k', 'BackgroundColor', 'w', 'FontSize', 12);
+% str = strcat("w0:", num2str(x(2)));
+% text(0.15, 0.7, str, 'Color', 'k', 'BackgroundColor', 'w', 'FontSize', 12);
+% str = strcat("tdelay:", num2str(x(3)));
+% text(0.15, 0.6, str, 'Color', 'k', 'BackgroundColor', 'w', 'FontSize', 12);
+% xlabel('time(s)');ylabel('speed normalized to settle value');
+% hold off;
+% 
+% Frames = [Frames getframe(gcf)]; 
 
 end
 

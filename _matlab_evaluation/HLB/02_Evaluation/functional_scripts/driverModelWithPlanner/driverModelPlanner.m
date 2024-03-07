@@ -38,12 +38,7 @@ global GT_U_GP alpha Kxx
 %% Introduction
 % reshape the parameter matrix
 
-    P1 = reshape(P(1:21,1),3,7);
-
-    % initialize variables
-    X = zeros(4,1);
-    Y = zeros(4,1);
-    theta = zeros(4,1);
+Np = length(P3in); % number of node points is calculated based on the distances given in this vector
 
     %% Nominal road point calculation
     % first determine the sections within the subsegment. This will yield the
@@ -66,17 +61,24 @@ global GT_U_GP alpha Kxx
         %% Model calculation
         if (ver==0)
             % LDM
-            U = [kappa_nominal; dkappa_nominal];
+            % initialize variables
+            X = zeros(Np+1,1);
+            Y = zeros(Np+1,1);
+            theta = zeros(Np+1,1);
+            % parameters
+            P1 = reshape(P(1:Np*Np,1),Np, Np);
+            
+            U = [kappa_nominal];
 
             % scaling of the predictor variables
             kappa_lim = 0.001;
             dkappa_lim = 1e-5;
-            U_lim = [ones(3,1)*kappa_lim; ones(4,1)*dkappa_lim];
+            U_lim = [ones(Np,1)*kappa_lim];
             U = U./U_lim;
 
             % The ouput of the model is the linear combination of predictor variables
             x = P1*U;
-            x(1:3) = min(max(-1.25,x(1:3)), 1.25);
+            x(1:Np) = min(max(-1.25,x(1:Np)), 1.25);
         elseif (ver == 1)
             % E-LDM
             kappa_lim = 0.001;
@@ -149,11 +151,11 @@ global GT_U_GP alpha Kxx
             x(1:3) = min(max(-1.25, [m1 m2 m3]),1.25);
             x = x';
         end
-        Y(2:4) = Y_nominal(2:4) + x(1:3); %cos(theta_nominal(2:4)).*x(1:3);
+        Y(2:Np+1) = Y_nominal(2:Np+1) + x(1:Np); %cos(theta_nominal(2:4)).*x(1:3);
 
 % The outputs in the local coordinate frame are initialized in [0 0 0],
 % therefore their first index is not assigned to anything but kept at zero.
-X(2:4) = X_nominal(2:4); % - sin(theta_nominal(2:4)).*x(1:3);
-theta(2:4) = atan(tan(theta_nominal(2:4))); % limiting the orientation
+X(2:Np+1) = X_nominal(2:Np+1); % - sin(theta_nominal(2:4)).*x(1:3);
+theta(2:Np+1) = atan(tan(theta_nominal(2:Np+1))); % limiting the orientation
 end
 
