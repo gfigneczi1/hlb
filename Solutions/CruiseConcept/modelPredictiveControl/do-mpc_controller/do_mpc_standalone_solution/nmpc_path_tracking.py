@@ -13,12 +13,12 @@ class MPCController:
         df = pd.read_excel('31_south.xlsx')
         self.x_coordinates = df.iloc[:, 0].values
         self.y_coordinates = df.iloc[:, 1].values
-        self.simulation_steps = 8500 # simulation time: simulation_steps * t_step_simulator
+        self.simulation_steps = 11000 # simulation time: simulation_steps * t_step_simulator
         self.ref_road_points_global = np.column_stack((self.x_coordinates, self.y_coordinates))
         model_type = 'continuous'
         self.model = do_mpc.model.Model(model_type)
         # Vehicle Model Parameters 
-        self.vx = 30 # [m/s]
+        self.vx = 18 # [m/s]
         self.Calfa_f = 100000 # [N/rad]
         self.Calfa_r = 100000 # [N/rad]
         self.Lr = 1.8 # [m]
@@ -107,7 +107,7 @@ class MPCController:
         'state_discretization': 'collocation',
         'store_full_solution': True,
         # Use 'MA27' linear solver in ipopt for faster calculations (current 'mumps'):
-        'nlpsol_opts': {'ipopt.linear_solver': 'mumps'}
+        'nlpsol_opts': {'ipopt.linear_solver': 'MA57'}
         }
         self.mpc.set_param(**setup_mpc)
 
