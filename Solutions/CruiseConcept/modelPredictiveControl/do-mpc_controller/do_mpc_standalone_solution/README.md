@@ -45,3 +45,37 @@ self.mpc.set_rterm(steering_angle=20) # Change the value inside init_controller(
 self.simulation_steps # Number of iterations in the do_closed_loop() function
 self.t_step_simulator
 ```
+
+## Installing coinhsl library
+### Install anaconda
+https://docs.anaconda.com/free/anaconda/install/linux/
+After that, install the libfortran library
+```
+conda install -c anaconda libgfortran
+```
+If that fails (cannot locate the package), run this first:
+```
+conda config --append channels conda-forge
+```
+### Download the coinhsl library (license required)
+Download the coinhsl-2023.11.17.tar.gz, not the binaries.
+After that, extract the tar file and cd to the coinhsl-xxx folder.
+Here run the following:
+```
+sudo apt install libblas-dev liblapack-dev libmetis-dev
+```
+```
+sudo apt install meson
+```
+```
+meson setup builddir --buildtype=release --prefix=/PATH/to_your/coinhsl_folder
+```
+If you get error for the pkgconfig.relocatable, remove this option from the meson.build file (see line 3, default_options list).
+```
+meson compile -C builddir
+```
+```
+meson install -C builddir
+```
+If everything went successfully, follow these steps: https://www.do-mpc.com/en/latest/installation.html#linux (some of these steps are already compoleted)
+
