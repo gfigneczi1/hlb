@@ -6,35 +6,35 @@ global segment_m indexes globalStartIndex globalStopIndex vehicleState parameter
 % targetSpeed = 30; %kph
 % vehiclePath = functional_vehicleModelTest(path, targetSpeed);
 %     
-%     %% single simulation
-%     parameters.P_npDistances = [0.1, 0.2, 0.3];
-%     parameters.numberOfNodePoints = 3;
-%     %parameters.P_ELDM = reshape([2.86078399132926;0.884814215672794;-1.90657794718284;-3.09943416608130;-0.665457759838954;2.30236448840005;0.348462602099426;-0.107035325513227;-0.271014703397729;1.07959046302992;-0.775251579323662;-0.252977961446196;-0.822164501814478;1.36747233514778;0.113183483561418;-0.124241139196637;-0.454142531428492;0.293625990988783;-0.000983031283019174;-0.000983031283019174;-0.000983031283019174], 3,7);
-%     parameters.P_ELDM = zeros(3,7);
-%     parameters.P_replanCycle = 10;
-%     parameters.vehicleParameters.wheelBase = 2.7;
-%     parameters.vehicleParameters.r = 0.309725; 
-%     parameters.vehicleParameters.c_alfaf = 8600; 
-%     parameters.vehicleParameters.c_sf = 23000; 
-%     parameters.vehicleParameters.c_alfar = 8600; 
-%     parameters.vehicleParameters.c_sr = 23000;
-%     parameters.vehicleParameters.m = 1519;
-%     parameters.vehicleParameters.Jwheel = 250; 
-%     parameters.vehicleParameters.J = 1818;
-%     parameters.vehicleParameters.A = 1.5; 
-%     parameters.vehicleParameters.c_w = 0; 
-%     parameters.vehicleParameters.rho_air = 1; 
-%     parameters.vehicleParameters.lf = 1; 
-%     parameters.vehicleParameters.lr = 1.5; 
+    %% single simulation
+    parameters.P_npDistances = [0.1, 0.2, 0.3];
+    parameters.numberOfNodePoints = 3;
+    %parameters.P_ELDM = reshape([2.86078399132926;0.884814215672794;-1.90657794718284;-3.09943416608130;-0.665457759838954;2.30236448840005;0.348462602099426;-0.107035325513227;-0.271014703397729;1.07959046302992;-0.775251579323662;-0.252977961446196;-0.822164501814478;1.36747233514778;0.113183483561418;-0.124241139196637;-0.454142531428492;0.293625990988783;-0.000983031283019174;-0.000983031283019174;-0.000983031283019174], 3,7);
+    parameters.P_ELDM = zeros(3,7);
+    parameters.P_replanCycle = 10;
+    parameters.vehicleParameters.wheelBase = 2.7;
+    parameters.vehicleParameters.r = 0.309725; 
+    parameters.vehicleParameters.c_alfaf = 8600; 
+    parameters.vehicleParameters.c_sf = 23000; 
+    parameters.vehicleParameters.c_alfar = 8600; 
+    parameters.vehicleParameters.c_sr = 23000;
+    parameters.vehicleParameters.m = 1519;
+    parameters.vehicleParameters.Jwheel = 250; 
+    parameters.vehicleParameters.J = 1818;
+    parameters.vehicleParameters.A = 1.5; 
+    parameters.vehicleParameters.c_w = 0; 
+    parameters.vehicleParameters.rho_air = 1; 
+    parameters.vehicleParameters.lf = 1; 
+    parameters.vehicleParameters.lr = 1.5; 
 % 
-%      segment = segments.segments(1).segment;
-%     [~, segment_m, indexes] = prepareInputForPlanner(segment);
-%     
-%     globalStartIndex = 2; % minimum is 2, otherwise it fails!
-%     globalStopIndex = size(segment_m,1);
-% 
-%     corFine = corridorGeneration(0.5);
-%     refFine = referenceGeneration(0.5);
+     segment = segments.segments(1).segment;
+    [~, segment_m, indexes] = prepareInputForPlanner(segment);
+    
+    globalStartIndex = 2; % minimum is 2, otherwise it fails!
+    globalStopIndex = size(segment_m,1);
+
+    corFine = corridorGeneration(0.5);
+    refFine = referenceGeneration(0.5);
 % 
 %     for i=1:length(segments.segments)
      segment = segments.segments(1).segment;
@@ -49,18 +49,18 @@ global segment_m indexes globalStartIndex globalStopIndex vehicleState parameter
 % 
 %     
 %     
-%     % Definition of metadata
-%     metadata.pathValidity = 1;
-%     
-%     corFine = corridorGeneration(0.5);
-%     refFine = referenceGeneration(0.5);
-%     
-%     modelID = "groundTruth";
-%     modelMode = "kinematic";
-%     %[pathLite, U, dY, ~, intentionPathLite, vehicleStateMemory] = pathGenerationLite();
-% 
-%     [path, U, dY, ~, intentionPath] = pathGeneration();
-%     parameters.P_ELDM = reshape(functional_driverModelLearning(U, dY ,8), 3,7);
+    % Definition of metadata
+    metadata.pathValidity = 1;
+    
+    corFine = corridorGeneration(0.5);
+    refFine = referenceGeneration(0.5);
+    
+    modelID = "groundTruth";
+    modelMode = "kinematic";
+    %[pathLite, U, dY, ~, intentionPathLite, vehicleStateMemory] = pathGenerationLite();
+
+    [path, U, dY, ~, intentionPath] = pathGeneration();
+    parameters.P_ELDM = reshape(functional_driverModelLearning(U, dY ,8), 3,7);
 % 
 %     parameters_out(i).U = U;
 %     parameters_out(i).dY = dY;

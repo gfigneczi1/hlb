@@ -21,23 +21,28 @@ function evaluator_mapValidation (segments,config)
         % signals
         for i=1:length(segments.segments)
             if (segments.segments(i).signalStatus(1) == 1)
-                transformed_coefficients = lane_model_validation_fineGrid (segments.validator, segments.segments(i).segment);
-                segments.segments(i).segment.c01_left = transformed_coefficients(:,1)+1.875;
-                segments.segments(i).segment.c01_right = transformed_coefficients(:,1)-1.875;
-                segments.segments(i).segment.c1 = transformed_coefficients(:,2);
-                segments.segments(i).segment.c2 = transformed_coefficients(:,3);
-                segments.segments(i).segment.SteeringTorque = zeros(size(transformed_coefficients,1),1);
-                segments.segments(i).segment.Left_Index = zeros(size(transformed_coefficients,1),1);
-                segments.segments(i).segment.Right_Index = zeros(size(transformed_coefficients,1),1);
-                % saving mat file
-                segment = segments.segments(i).segment;
-                segment = table2struct(segment,"ToScalar",true);
-                signals = fieldnames(segment);
-                for j=1:length(signals)
-                    fieldname = convertCharsToStrings(signals(j));
-                    segment.(fieldname) = segment.(fieldname)';
+                [transformed_coefficients, segment] = lane_model_validation_fineGrid (segments.validator, segments.segments(i).segment);
+                if (~isempty(transformed_coefficients))
+                    segments.segments(i).segment = struct2table(segment);
+                    segments.segments(i).segment.c01_left = transformed_coefficients(:,1)+1.875;
+                    segments.segments(i).segment.c01_right = transformed_coefficients(:,1)-1.875;
+                    segments.segments(i).segment.c1 = transformed_coefficients(:,2);
+                    segments.segments(i).segment.c2 = transformed_coefficients(:,3);
+                    segments.segments(i).segment.SteeringTorque = zeros(size(transformed_coefficients,1),1);
+                    segments.segments(i).segment.Left_Index = zeros(size(transformed_coefficients,1),1);
+                    segments.segments(i).segment.Right_Index = zeros(size(transformed_coefficients,1),1);
+                    % saving mat file
+                    segment = segments.segments(i).segment;
+                    segment = table2struct(segment,"ToScalar",true);
+                    signals = fieldnames(segment);
+                    for j=1:length(signals)
+                        fieldname = convertCharsToStrings(signals(j));
+                        segment.(fieldname) = segment.(fieldname)';
+                    end
+                    save (fullfile(config.root,strcat(segments.segments(i).name,"_extended.mat")),'segment');
+                else
+                    disp(strcat("Corridor reproduction failed for the following file:", segments.segments(i).name));
                 end
-                save (fullfile(config.root,strcat(segments.segments(i).name,"_extended.mat")),'segment');
             end
         end
     else
@@ -146,7 +151,7 @@ end
         
 end
 
-function [transformed_coefficients] = lane_model_validation_fineGrid (validator, segment)
+function [transformed_coefficients, segment] = lane_model_validation_fineGrid (validator, segment)
 % using splin to create a fine grid on the coefficients from the validator.
 % then, we search for the closest point from the segment, and that is
 % to calculate the coefficients, the following way:
@@ -178,6 +183,9 @@ else
     segmentNotMon = numel(find(diff(segment.X_abs)>=0)) > 0;
 end
 if (~validatorNotMon && ~segmentNotMon)
+    % cutting parts where validator is available
+    segment.validatorAvailable = (segment.X_abs > min(validator.segment.X_abs)) .* (segment.X_abs < max(validator.segment.X_abs));
+    segment = structure_filter(segment, "validatorAvailable", 1, "EQ");
     disp('Using the fine grid based new solution for coefficient transformation');
     yy = spline(validator.segment.X_abs, validator.segment.Y_abs, segment.X_abs);
     tt = spline(validator.segment.X_abs, validator.segment.theta_calc,segment.X_abs);
@@ -195,7 +203,8 @@ if (~validatorNotMon && ~segmentNotMon)
 else
     disp('Coefficient transformation with spline is not possible, as X values are not monotonic');
     disp('Using the old solution instead');
-    transformed_coefficients = lane_model_validation (validator, segment);
+    %transformed_coefficients = lane_model_validation (validator, segment);
+    transformed_coefficients = [];
 end
 
 

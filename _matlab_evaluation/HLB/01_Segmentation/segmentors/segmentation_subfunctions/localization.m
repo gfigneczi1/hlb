@@ -12,14 +12,14 @@ in_polygon_all = false(length(X_abs), 1);
 road_type = zeros(1, length(X_abs));
 for i=1:numel(road_names)
     % labeling roads, 1 for country road, 2 for highway
-    if contains(road_names{i}, "ref")
-        road_type_name = 4;
-    elseif contains(road_names{i}, "r")
+    if contains(road_names{i}, "r")
         road_type_name = 1;
     elseif contains(road_names{i}, "M")
         road_type_name = 2;
     elseif contains(road_names{i}, "ZZ")
         road_type_name = 3;
+    elseif contains(road_names{i}, "ref")
+        road_type_name = 4;
     end
     road_reference_polygon = reference_polygon.(road_names{i});
     in_polygon = inpolygon(X_abs, Y_abs, road_reference_polygon.X_poly,...

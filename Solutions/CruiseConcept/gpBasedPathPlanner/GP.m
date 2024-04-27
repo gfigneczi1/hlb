@@ -1,24 +1,53 @@
 % This function is the cover function to call the GP sub-function for a
-% given segment. Segments is an array of struct containing the driving data
+% given segment_m. segment_ms is an array of struct containing the driving data
 % of multiple drivers. Config is a metadata struct containing information
 % about e.g., the plot folders
 close all; clear;
-load('C:\database\KDP_HLB_GP\Dr009_Dr013.mat');
+load('C:\database\KDP_HLB_GP\Dr008_Dr023_input_GP.mat');
 config.root = "./";
 
-MAXIMUM_LENGTH_OF_SNIPPET = 2500;
+MAXIMUM_INPUT_SIZE = 15000; % before snipetting and normalization
+MAXIMUM_LENGTH_OF_SNIPPET = 15000; % after cutting, snippets will be of this length
+MAXIMUM_NUMBER_OF_SNIPPET = 1; % number of snippets after cutting the preprocessed data
 GENERATE_KERNEL_CORRELATION_PLOTS = false;
-KERNEL_TYPE = "{'covSum', {'covRQiso',{'covPERiso',{@covRQiso}}, {'covProd', {'covLINiso', 'covLINiso'}}}}";
-CUTTING_OPTION = "total";
+KERNEL_TYPE = "{'covSEard'}"; %"{'covSum',{{'covProd', {'covLINard', 'covLINard'}}, 'covSEard'}}";
 RATIO_OF_TRAIN_VS_TOTAL = 0.7;
-GENERATE_OFFSET_TIME_PLOTS = true;
-MAXIMUM_PREVIEW_DISTANCE = 140; % from within preview information is extracted, unit: m
+GENERATE_OFFSET_TIME_PLOTS = false;
+MAXIMUM_PREVIEW_DISTANCE = 150; % from within preview information is extracted, unit: m
 OUTPUT_STEP_DISTANCE = 10; % in meters
-NUMBER_OF_PREVIEW_INFORMATION = 1; % maximum number
-OUTPUT_SHIFT = 0; %10:OUTPUT_STEP_DISTANCE:MAXIMUM_PREVIEW_DISTANCE; % preview distance is divided into sections where the output will be predicted
+NUMBER_OF_PREVIEW_INFORMATION = 2; % maximum number
+OUTPUT_SHIFT = linspace(15,MAXIMUM_PREVIEW_DISTANCE,10); %10:OUTPUT_STEP_DISTANCE:MAXIMUM_PREVIEW_DISTANCE; % preview distance is divided into sections where the output will be predicted
+MERGE_DATA_TABLES = false;
+DRIVER_ID_IF_NOT_MERGED = 1;
+SIMPLIFICATION_RATIO = 1;
+EPOCH_CALCULATION = true;
+EPOCH_NUMBER = 10;
+SPARSE_DATA = false;
+GREEDY_REDUCTION = true;
 
-segment = segments.segments(2).segment; % Driver 13
-name = segments.segments(1).name;
+usedInputs = ones(1,8);
+usedInputs = eye(8);
+usedInputs = 1-usedInputs;
+usedInputs = ones(1,8); usedInputs(1,3) = 0; usedInputs(1,1) = 0;
+%kernels = ["@covSEard","{'covSum', {'covSEard', 'covLINard'}}",  "{'covProd', {'covLINard', 'covLINard'}}", "{'covSum',{{'covProd', {'covLINard', 'covLINard'}}, 'covSEard'}}"];
+%kernels = ["{'covSum',{{'covProd', {'covLINard', 'covLINard'}}, 'covSEard'}}"];
+kernels = ["{'covSEard'}"];
+
+if (MERGE_DATA_TABLES)
+    for i=1:length(segments.segments)
+        % loop through segment_ms and concatenate each to the previous one
+        if (i==1)
+            segment=segments.segments(i).segment;
+        else
+            segment=[segment; segments.segments(i).segment];
+        end
+    end
+    name = 'mergedDrivers';
+else
+    segment = segments.segments(DRIVER_ID_IF_NOT_MERGED).segment;
+    name = segments.segments(DRIVER_ID_IF_NOT_MERGED).name;
+end
+
 % transforming the struct to array for lower calculation time
 [~, segment_m, indexes] = prepareInputForPlanner(segment);
 
@@ -26,279 +55,336 @@ temp_folder_path = config.root;
 plots_folder_name = 'plots';
 set(0,'DefaultFigureVisible','off');
 
-%% Input  and Output matrix (row: signals, column: time steps)
-curveTypes = calculateCurveType(segment_m, indexes, name);
-switch CUTTING_OPTION 
-    case "snippeting"
-        % Segmenting data to snippets with continuation
-        j = 1;
-        snippetStart = 1;
-        for i=1:length(curveTypes)-1
-            if (curveTypes(i) == 1 && curveTypes(i+1)~=1)
-                % there was a step in the data, cut it
-                snippets{j} = segment_m(snippetStart:i, :);
-                j = j + 1;
-            elseif (curveTypes(i) ~= 1 && curveTypes(i+1)==1)
-                snippetStart = i+1;
-            end
-        end
-    case "straights"
-        straights = segment_m(curveTypes==1, :);
-        if (numel(find(curveTypes==1)) > MAXIMUM_LENGTH_OF_SNIPPET)
-            numberOfSnippets = floor(size(straights,1) / MAXIMUM_LENGTH_OF_SNIPPET);
-            for i=1:numberOfSnippets
-                snippets{i} = straights((i-1)*MAXIMUM_LENGTH_OF_SNIPPET+1:i*MAXIMUM_LENGTH_OF_SNIPPET,:);
-            end
-        else
-            snippets{1} = segment_m(curveTypes==1, :);
-        end
-    case "total"
-        if (size(segment_m,1) > MAXIMUM_LENGTH_OF_SNIPPET)
-            numberOfSnippets = floor(size(segment_m,1) / MAXIMUM_LENGTH_OF_SNIPPET);
-            for i=1:numberOfSnippets
-                snippets{i} = segment_m((i-1)*MAXIMUM_LENGTH_OF_SNIPPET+1:i*MAXIMUM_LENGTH_OF_SNIPPET,:);
-            end
-        else
-            snippets{1} = segment_m(:, :);
-        end
-    case "curves"
-        % Segmenting data to snippets with continuation
-        j = 1;
-        snippetStart = 1;
-        for i=1:length(curveTypes)-1
-            if (curveTypes(i) > 1 && curveTypes(i+1)<=1)
-                % there was a step in the data, cut it
-                snippets{j} = segment_m(snippetStart:i, :);
-                j = j + 1;
-            elseif (curveTypes(i) <= 1 && curveTypes(i+1)>1)
-                snippetStart = i+1;
-            end
-        end
-end
-
-%% loop through data sections
 % PARAMETERS
 shiftOnOutputSelection = OUTPUT_SHIFT;  %shift the offset in time (positive means shift forward)
 p = RATIO_OF_TRAIN_VS_TOTAL; %percentage of evaluation data from entire dataset
+dT = mean(diff(segment_m(:, indexes.Relative_time)));
 
-inputVariations = generateInputVariations(8);
-inputVariations = ones(1,8);
+for driverID = 1:size(segments.segments,2)
+    DRIVER_ID_IF_NOT_MERGED = driverID;
+for kernelID = 1:size(usedInputs,1)
+    usedInput = usedInputs(kernelID,:);
+    for shiftID=1:numel(OUTPUT_SHIFT)
+        tic;
+        dx = segment_m(:, indexes.VelocityX)*dT;
+        shiftOnOutput = [1:1:size(segment_m(:,indexes.Relative_time),1)]'+floor(OUTPUT_SHIFT(shiftID)./dx);
+        input = [segment_m(:, indexes.OncomingVehicleTimeToPass), ...
+                segment_m(:, indexes.OncomingTrafficType), ...
+                segment_m(:, indexes.FrontTrafficType), ...
+                segment_m(:, indexes.VelocityX), ...
+                movmean(segment_m(:, indexes.AccelerationX),20), ...
+                movmean(segment_m(:, indexes.YawRate),20), ...
+                movmean(segment_m(:, indexes.LaneCurvature), 20), ...
+                movmean(segment_m(:, indexes.c3), 200)];
 
-dT = mean(diff(snippets{i}(:, indexes.q_T0)));
-
-for numberOfPreviewInformation=1:NUMBER_OF_PREVIEW_INFORMATION
-    previewSegmentLength = MAXIMUM_PREVIEW_DISTANCE/numberOfPreviewInformation; % unit: m
-    %inputVariations = ones(1, 8+numberOfPreviewInformation); inputVariations(1) = 0;
-
-for missingInputID=1:size(inputVariations,1)
-
-for shiftID=1:numel(OUTPUT_SHIFT)
-    for i=1:min(20,length(snippets))
-        dx = snippets{i}(:, indexes.velocityX)*dT;
-
-        % sweep a selection of shifts
-        shiftOnOutput = [1:1:size(snippets{i}(:,indexes.q_T0),1)]'+floor(OUTPUT_SHIFT(shiftID)./dx);
-
-        inputPreview = [];
-        % input preview set is currently the mean curvature
-        for previewInformationID = 1:numberOfPreviewInformation            
-            if (numberOfPreviewInformation==1)
+        input = input(:,usedInput==1);
+    
+        variables = ["$t_{pass}$", "$v_x$", "$a_x$", "$\omega$", "$\kappa_{road}$", "$d\kappa$"];
+    
+        output = zeros(size(input,1),1);
+        for shiftIDonOutput=1:size(input,1)
+            if (shiftOnOutput(shiftIDonOutput) > size(input,1))
+                break;
             else
-                previewSegmentFrom = [1:1:size(snippets{i}(:,indexes.q_T0),1)]'+floor((previewSegmentLength*(previewInformationID-1))./dx);
-                previewSegmentTo = [1:1:size(snippets{i}(:,indexes.q_T0),1)]'+floor((previewSegmentLength*previewInformationID)./dx);
-                for dataPoint = 1:size(snippets{i}(:,indexes.q_T0),1)
-                    if (previewSegmentTo(dataPoint) > size(snippets{i}(:,indexes.q_T0),1))
-                        break;
-                    else
-                        inputPreview(dataPoint,previewInformationID) = mean(snippets{i}(previewSegmentFrom(dataPoint):previewSegmentTo(dataPoint), indexes.c2)*2);
-                    end
-                end
+                output(shiftIDonOutput,1) = -segment_m(shiftOnOutput(shiftIDonOutput), indexes.c0);
             end
         end
 
-        %Npreview = size(inputPreview,1);
-                
-        input = [snippets{i}(:, indexes.c2)*2, ...
-            snippets{i}(:, indexes.timeToPass), ...
-            snippets{i}(:, indexes.oncomingTraffic), ...
-            -movmean(snippets{i}(:, indexes.c1),20), ...
-            snippets{i}(:, indexes.velocityX).*cos(-atan(movmean(snippets{i}(:, indexes.c1),20))), ...
-            snippets{i}(:, indexes.velocityX).*sin(-atan(movmean(snippets{i}(:, indexes.c1),20))), ...
-            movmean(snippets{i}(:, indexes.accelerationX),20), ...
-            movmean(snippets{i}(:, indexes.yawRate),20)];
-        
-        input = normAndCentral(input);
-
-        %input = [input(1:Npreview,:), inputPreview];
-        
-        input = input(:, find(inputVariations(missingInputID,:)==1));
+        % simplification with clustering
+        if (SIMPLIFICATION_RATIO < 1)
+            % long straight sections make the training difficult.
+            % therefore, sections with low curvature and low yawrate values
+            % are filtered out, only WHEN no object is present. 
+            % SIMPLIFICATION RATIO gives how many percent of such points
+            % are filtered out from the estimation data!
+            relevantPoints = ((((abs(input(:,7)) > 0.2*max(abs(input(:,7)))) & ...
+                (abs(input(:,8)) > 0.2*max(abs(input(:,8))))) ...
+                | (input(:,2)>0)));
+            irrelevantPoints = find(relevantPoints == 0);
+            nIrrelevant = numel(find(irrelevantPoints));
+            relevantPointsIndex = [find(relevantPoints==1); irrelevantPoints(randperm(nIrrelevant, floor(SIMPLIFICATION_RATIO*nIrrelevant)))];
     
-        N = size(input,1);
-        output = zeros(N,1);
+            input = input(relevantPointsIndex,:);
+            output = output(relevantPointsIndex,:);
+            relevantPoints = all((abs(input(:,4:8)-mean(input(:,4:8)))<=2*std(input(:,4:8)))');
+            input = input(relevantPoints,:);
+            output = output(relevantPoints,:);
+        end        
 
-%         for shiftIDonOutput=1:N
-%             if (shiftOnOutput(shiftIDonOutput) > N)
-%                 break;
-%             else
-%                 output(shiftIDonOutput,1) = -snippets{i}(shiftOnOutput(shiftIDonOutput), indexes.c0);
-%             end
-%         end
-    
-        % simple generation of output shift
-        output(1:N-shiftOnOutput) = -snippets{i}(shiftOnOutput+1:end, indexes.c0); %-movmean(snippets{i}(shiftOnOutput+1:end, indexes.c0),180); %minus offset due to coordinate system transformation (vehicle to lane vs lane to vehicle)
-    
-        output = normAndCentral(output);
-        
-            % PLOTTING input - output plots for visual checks
-            f = figure('units','normalized','outerposition',[0 0 1 1]);
-            subplot(size(input,2)+1,1,1);
-            plot(output, 'color', 'k');
-            grid on;
-            
-            for j=1:size(input,2)
-                subplot(size(input,2)+1,1,(j+1));
-                plot(input(:,j), 'color', 'b'); grid on;
-            end            
-            
-            savefig(f, fullfile(temp_folder_path, plots_folder_name,...
-                                strcat('GP_inputOutputs', name(1:end-4), '_', num2str(i), '.fig')));
-            saveas(f, fullfile(temp_folder_path, plots_folder_name,...
-                            strcat('GP_inputOutputs_', name(1:end-4), '_', num2str(i), '.png')));
-            close(f);
-    
-        % EVALUATION / VALIDATION DATA SELECTION
-        shuffledIndeces = randperm(N);
-        estimationData = shuffledIndeces(1:round(p*N));
-        validationData = shuffledIndeces(round(p*N)+1:end);
-        input_estimation = input(estimationData,:);
-        output_estimation = output(estimationData,1);
-        input_validation = input(validationData,:);
-        output_validation = output(validationData,:);
-    
-        %% Define GP 
-        meanfunc = [];       % Start with a zero mean prior
-        eval(strcat('covfunc = ',KERNEL_TYPE));    % Squared Exponental covariance function
-        % ID problem
-        
-        likfunc = @likGauss;    % Gaussian likelihood
-        if (KERNEL_TYPE == "@covLINiso")
-            hyp = struct('mean', [], 'cov', 0, 'lik', -1); % initalize hyper-parameter structure associated with the mean, covariance an likelihood functions
-        elseif (KERNEL_TYPE == "@covRQiso")
-            hyp = struct('mean', [], 'cov', [0,0,0], 'lik', -1);
-        elseif (KERNEL_TYPE=="{'covPERiso',{@covRQiso}}")
-            hyp = struct('mean', [], 'cov', [0,0,0,0], 'lik', -1);
-        elseif (KERNEL_TYPE == "{'covSum', {'covRQiso',{'covPERiso',{@covRQiso}}}}")
-            hyp = struct('mean', [], 'cov', [0, 0, 0, 0, 0, 0, 0], 'lik', -1);
-        elseif (KERNEL_TYPE == "{'covSum', {'covRQiso',{'covPERiso',{@covRQiso}}, 'covLINiso'}}")
-            hyp = struct('mean', [], 'cov', [0, 0, 0, 0, 0, 0, 0, 0], 'lik', -1);
-        elseif (KERNEL_TYPE == "{'covSum', {'covRQiso','covLINiso'}}")
-            hyp = struct('mean', [], 'cov', [0, 0, 0, 0], 'lik', -1);
-        elseif (KERNEL_TYPE == "{'covSum', {'covSEiso', 'covLINiso'}}")
-            hyp = struct('mean', [], 'cov', [0, 0, 0], 'lik', -1);
-        elseif (KERNEL_TYPE == "{'covSum', {'covSEiso', 'covLINiso', {'covPERiso',{@covRQiso}}}}")
-            hyp = struct('mean', [], 'cov', [0, 0, 0, 0, 0, 0, 0], 'lik', -1);
-        elseif (KERNEL_TYPE == "{'covSum', {'covRQiso',{'covPERiso',{@covRQiso}}, {'covProd', {'covLINiso', 'covLINiso'}}}}")
-            hyp = struct('mean', [], 'cov', [0, 0, 0, 0, 0, 0, 0, 0, 0], 'lik', -1);
-        else
-            hyp = struct('mean', [], 'cov', [0, 0], 'lik', -1);
-        end
-
-        hyp_opt = minimize(hyp, @gp, -100, @infGaussLik, meanfunc, covfunc, likfunc, input_estimation, output_estimation); % Optimize the marginal likelihood
-       
-        % Evaluation of validation data
-        [estimation, deviation] = gp(hyp_opt, @infGaussLik, meanfunc, covfunc, likfunc, input_estimation, output_estimation, input_validation); % extract the mean and covarance functions
-        
-        % Evaluation of estimation data
-        [estimationEstimation, deviationEstimation] = gp(hyp_opt, @infGaussLik, meanfunc, covfunc, likfunc, input_estimation, output_estimation, input_estimation); % extract the mean and covarance functions
-
-        if (GENERATE_KERNEL_CORRELATION_PLOTS && i==1 && shiftID==1)
-        % Evaluation of entire range - Kernel shape check
-        input_min = min(input_estimation); input_max = max(input_estimation); 
-        for j=1:size(input_estimation,2)
-            input_range(:,j) = linspace(input_min(j), input_max(j), 100)'; 
-        end
-        
-        variables = ["$\kappa$", "$t_{pass}$", "$obj_{type}$", "$\Theta$", "$v_x$", "$v_y$", "$a_x$", "$\omega$"];
-        
-        for k=1:size(input_range,2)
-            f = figure('units','normalized','outerposition',[0 0 1 1]);
-            set(f,'defaulttextInterpreter','latex') ;
-            set(f, 'defaultAxesTickLabelInterpreter','latex');  
-            set(f, 'defaultLegendInterpreter','latex');
-            for n=k+1:size(input_range,2)
-                for j=1:size(input_range,1)
-                    input_estimation_range = input_range;
-                    input_estimation_range(:,k) = input_range(j,k);
-                    nonIndexed = 1:1:size(input_range,2);
-                    input_estimation_range(:,nonIndexed~=k & nonIndexed~=n) = 0;
-                    [estimationRange, deviationRange] = gp(hyp_opt, @infGaussLik, meanfunc, covfunc, likfunc, input_estimation, output_estimation, input_estimation_range); % extract the mean and covarance functions
-
-                    estimationRangeArray(k,n, :,j) = estimationRange;
-                    % the j^th variable in the k^th column is constant
-                    % during this for cycle, which means one column of
-                    % estimationRangeArray(k,n) reflect to the change in
-                    % the 2nd variable, not the k^th variable (but the
-                    % n^th).
-                end
-                subplot(2,4,n);
-                a(:,:) = estimationRangeArray(k,n,:,:);
-                % 1st and 2nd dimensions based on the above comment
-%                 scatter3(input_range(:,k), ...
-%                	input_range(:,n), ...
-%                 estimationRange, ...
-%                 1, ...
-%                 estimationRange);
-                surf(input_range(:,k), input_range(:,n), a);
-                xlabel(variables(k)); ylabel(variables(n));
-                set(gca,'FontSize', 14);
-            end
-            savefig(f, fullfile(temp_folder_path, plots_folder_name,...
-                            strcat('Kernel_', num2str(k), '_', num2str(i), '_', name(1:end-4), '.fig')));
-            saveas(f, fullfile(temp_folder_path, plots_folder_name,...
-                            strcat('Kernel_', num2str(k), '_', num2str(i),'_', name(1:end-4), '.png')));
-            close(f);
-        end
-        end
-
+        % PLOTTING input - output plots for visual checks
         f = figure('units','normalized','outerposition',[0 0 1 1]);
-    
-        % plot the estimation data
-        subplot(2,1,1);
-        confidenceBounds = [estimation+2*sqrt(deviation); flip(estimation-2*sqrt(deviation),1)];
-        confidencePoints = (1:1:numel(estimation))';
-    
-        fill([confidencePoints; flip(confidencePoints)], confidenceBounds, 'y', 'DisplayName', '95% confidence');
-        hold on;
-        plot(estimation,'LineWidth', 2, 'color', 'k', 'LineStyle','--', 'DisplayName', 'estimated by GP');    
-        ylabel('offset');
+        set(f,'defaulttextInterpreter','latex') ;
+        set(f, 'defaultAxesTickLabelInterpreter','latex');  
+        set(f, 'defaultLegendInterpreter','latex');
+        subplot(size(input,2)+1,1,1);
+        plot(output, 'color', 'k');
         grid on;
-        plot(output_validation, 'LineWidth', 2, 'LineStyle', ':', 'color', 'b', 'DisplayName','validation data');
-        legend;
-        ylabel('offset(m)');
-
-        % plot the estimation data
-        subplot(2,1,2);
-        confidenceBounds = [estimationEstimation+2*sqrt(deviationEstimation); flip(estimationEstimation-2*sqrt(deviationEstimation),1)];
-        confidencePoints = (1:1:numel(estimationEstimation))';
-    
-        fill([confidencePoints; flip(confidencePoints)], confidenceBounds, 'y', 'DisplayName', '95% confidence');
-        hold on;
-        plot(estimationEstimation,'LineWidth', 2, 'color', 'k', 'LineStyle','--', 'DisplayName', 'estimated by GP');    
-        ylabel('offset');
-        grid on;
-        plot(output_estimation, 'LineWidth', 2, 'LineStyle', ':', 'color', 'b', 'DisplayName','estimation data');
-        legend;
-        ylabel('offset(m)');
+        
+        for j=1:size(input,2)
+            subplot(size(input,2)+1,1,(j+1));
+            plot(input(:,j), 'color', 'b'); grid on;
+            ylabel(variables(j));
+        end            
         
         savefig(f, fullfile(temp_folder_path, plots_folder_name,...
-                            strcat('Snippets_', num2str(i), '_', num2str(shiftID), name(1:end-4), '.fig')));
+                            strcat('GP_inputOutputs', name(1:end-4), '.fig')));
         saveas(f, fullfile(temp_folder_path, plots_folder_name,...
-                        strcat('Snippets_', num2str(i), '_', num2str(shiftID), name(1:end-4), '.png')));
+                        strcat('GP_inputOutputs_', name(1:end-4), '.png')));
         close(f);
+    
+    
+        % SHUFFLE
+        N = size(input,1);
+        shuffledIndeces = randperm(N);
+        input = input(shuffledIndeces,:);
+        output = output(shuffledIndeces, :);
 
-        if (GENERATE_OFFSET_TIME_PLOTS)
-            [estimationEstimation, deviationEstimation] = gp(hyp_opt, @infGaussLik, meanfunc, covfunc, likfunc, input_estimation, output_estimation, input);
-            f = figure();
+        % LIMIT DATA IF NEEDED
+        % this is done before norm and central
+        input = input(1:min(size(input,1),MAXIMUM_INPUT_SIZE),:);
+        output = output(1:min(size(input,1),MAXIMUM_INPUT_SIZE), :);
+
+        % NORM AND CENTRAL
+        [output, cout, ~] = normalize(output);
+        [input, cin, ~] = normalize(input);
+        
+        % SNIPETTING
+        for snippetID = 1:min(MAXIMUM_NUMBER_OF_SNIPPET,floor(N/MAXIMUM_LENGTH_OF_SNIPPET))
+            snippets{snippetID,1} = input((snippetID-1)*MAXIMUM_LENGTH_OF_SNIPPET+1:snippetID*MAXIMUM_LENGTH_OF_SNIPPET,:);
+            snippets{snippetID,2} = output((snippetID-1)*MAXIMUM_LENGTH_OF_SNIPPET+1:snippetID*MAXIMUM_LENGTH_OF_SNIPPET,:);
+        end
+
+        % SIMULATION
+        for i=1:min(MAXIMUM_NUMBER_OF_SNIPPET,length(snippets))
+            Din = snippets{i,1};
+            Dout = snippets{i,2};
+            M = size(Din,1);
+            % EVALUATION / VALIDATION DATA SELECTION
+            estimationData = 1:1:round(p*M);
+            validationData = round(p*M)+1:1:M;
+            input_estimation = Din(estimationData,:);
+            output_estimation = Dout(estimationData,1);
+            input_validation = Din(validationData,:);
+            output_validation = Dout(validationData,:);
+
+            % resampling estimation data
+            k = 1;
+            input_estimation = input_estimation(1:k:end,:);
+            output_estimation = output_estimation(1:k:end,:);
+    
+            %% Define GP 
+            meanfunc = [];       % Start with a zero mean prior
+            eval(strcat('covfunc = ',KERNEL_TYPE));    % Squared Exponental covariance function
+            % ID problem
+            
+            likfunc = @likGauss;    % Gaussian likelihood
+            if (KERNEL_TYPE == "@covLINiso")
+                hyp = struct('mean', [], 'cov', 0, 'lik', -1); % initalize hyper-parameter structure associated with the mean, covariance an likelihood functions
+            elseif (KERNEL_TYPE == "@covRQiso")
+                hyp = struct('mean', [], 'cov', [0,0,0], 'lik', -1);
+            elseif (KERNEL_TYPE=="{'covPERiso',{@covRQiso}}")
+                hyp = struct('mean', [], 'cov', [0,0,0,0], 'lik', -1);
+            elseif (KERNEL_TYPE == "{'covSum', {'covRQiso',{'covPERiso',{@covRQiso}}}}")
+                hyp = struct('mean', [], 'cov', [0, 0, 0, 0, 0, 0, 0], 'lik', -1);
+            elseif (KERNEL_TYPE == "{'covSum', {'covRQiso',{'covPERiso',{@covRQiso}}, 'covLINiso'}}")
+                hyp = struct('mean', [], 'cov', [0, 0, 0, 0, 0, 0, 0, 0], 'lik', -1);
+            elseif (KERNEL_TYPE == "{'covSum', {'covRQiso','covLINiso'}}")
+                hyp = struct('mean', [], 'cov', [0, 0, 0, 0], 'lik', -1);
+            elseif (KERNEL_TYPE == "{'covSum', {'covSEiso', 'covLINiso'}}")
+                hyp = struct('mean', [], 'cov', [0, 0, 0], 'lik', -1);
+            elseif (KERNEL_TYPE == "{'covSum', {'covSEiso', 'covLINiso', {'covPERiso',{@covRQiso}}}}")
+                hyp = struct('mean', [], 'cov', [0, 0, 0, 0, 0, 0, 0], 'lik', -1);
+            elseif (KERNEL_TYPE == "{'covSum', {'covRQiso',{'covPERiso',{@covRQiso}}, {'covProd', {'covLINiso', 'covLINiso'}}}}")
+                hyp = struct('mean', [], 'cov', [0, 0, 0, 0, 0, 0, 0, 0, 0], 'lik', -1);
+            elseif (KERNEL_TYPE == "@covSEard" || KERNEL_TYPE == "{'covSEard'}")
+                hyp = struct('mean', [], 'cov', ones(1,size(input_estimation,2)+1), 'lik', -1);
+            elseif (KERNEL_TYPE == "@covLINard")
+                hyp = struct('mean', [], 'cov', ones(1,size(input_estimation,2)), 'lik', -1);
+            elseif (KERNEL_TYPE == "{'covSum', {'covSEard', 'covLINard'}}")
+                hyp = struct('mean', [], 'cov', ones(1,2*size(input_estimation,2)+1), 'lik', -1);
+            elseif (KERNEL_TYPE == "{'covProd', {'covLINard', 'covLINard'}}")
+                hyp = struct('mean', [], 'cov', ones(1,2*size(input_estimation,2)), 'lik', -1);
+            elseif (KERNEL_TYPE == "{'covSum',{{'covProd', {'covLINard', 'covLINard'}}, 'covSEard'}}")
+                hyp = struct('mean', [], 'cov', ones(1,3*size(input_estimation,2)+1), 'lik', -1);
+            else
+                hyp = struct('mean', [], 'cov', [0, 0], 'lik', -1);
+            end
+    
+            if (EPOCH_CALCULATION)
+                % cut the estimation data to epochs, and loop through it for
+                % training
+                epochSize = floor(size(input_estimation,1)/EPOCH_NUMBER);
+                for iter = 1:1
+                    for epochID=1:EPOCH_NUMBER
+                        epoch{epochID,1} = input_estimation((epochID-1)*epochSize+1:epochID*epochSize,:);
+                        epoch{epochID,2} = output_estimation((epochID-1)*epochSize+1:epochID*epochSize,:);
+                        hypInduced = hyp;
+                        if (SPARSE_DATA)
+                            % generate initial value for induced inputs
+                            %xu = linspace(-1,1,100);
+                            %xu = xu'*ones(1,size(input_estimation,2));
+                            %stepSize = round(size(input_estimation,1)/100);
+                            %xu = epoch{epochID,1}(1:stepSize:end,:);
+                            for inputID=1:size(input_estimation,2)
+                                xu(:,inputID) = linspace(min(input_estimation(:,inputID)), max(input_estimation(:,inputID)), 1750)';
+                            end
+%                             k = kmeans(epoch{epochID,1}, 6100);
+%                             for kId = 1:numel(unique(k))
+%                                 xu(kId,:) = mean(epoch{epochID,1}(k==kId,:));
+%                             end
+                            covInduced = {'apxSparse',covfunc,xu};           % inducing points
+                            inf = @infGaussLik;
+                            infv  = @(varargin) inf(varargin{:},struct('s',0.0));           % VFE, opt.s = 0
+                            hypInduced.xu = xu; % adding induced inputs
+                            hypInducedOpt = minimize(hypInduced,@gp,-100, infv,meanfunc,covInduced,likfunc,epoch{epochID,1}, epoch{epochID,2}); 
+                            uInduced{epochID} = hypInducedOpt.xu;
+                            yInduced{epochID} = gp(hypInduced,@infGaussLik,meanfunc,covfunc,likfunc,epoch{epochID,1}, epoch{epochID,2}, hypInduced.xu);  
+                        elseif (GREEDY_REDUCTION)
+                            % greedy reduction: iteratively increase input
+                            % data, then run optimization of
+                            % hyperparameters
+                            eps = 175;
+                            if (epochID==1)
+                                uGreedy = epoch{epochID,1};
+                                yGreedy = epoch{epochID,2};
+                            else
+                                for sampleID = 2:size(epoch{epochID,1})
+                                    eucledianNorm = norm(uGreedy-epoch{epochID,1}(sampleID,:));
+                                    if (eucledianNorm > eps)
+                                        uGreedy = [uGreedy; epoch{epochID,1}(sampleID,:)];
+                                        yGreedy = [yGreedy; epoch{epochID,2}(sampleID,:)];
+                                    end
+                                end
+                            end
+                        else
+                            hyp = minimize(hyp, @gp, -100, @infGaussLik, meanfunc, covfunc, likfunc, epoch{epochID,1}, epoch{epochID,2}); % Optimize the marginal likelihood
+                        end
+                    end
+                end
+                if (SPARSE_DATA)
+                    input_induced = []; output_induced = [];
+                    for epochID=1:EPOCH_NUMBER
+                        input_induced = [input_induced; uInduced{epochID}];
+                        output_induced = [output_induced; yInduced{epochID}];
+                    end
+                    hyp_opt = minimize(hyp, @gp, -100, @infGaussLik, meanfunc, covfunc, likfunc, input_induced, output_induced); % Optimize the marginal likelihood
+                    % checking performance degradation
+                    [estimationInduced, deviationInduced] = gp(hyp_opt, @infGaussLik, meanfunc, covfunc, likfunc, input_induced, output_induced, input_estimation);
+
+                    %% KPI-s
+                    % RMS calculation
+                    RMSinduced = sqrt(sum((estimationInduced-output_estimation).^2)/size(estimationInduced,1));
+                    % NRMS - normalization on scale
+                    W = max(output_estimation) - min(output_estimation);
+                    NRMS_W_induced = RMSinduced/W;
+                    % NRMS - normalization on absolute maximum
+                    M = max(abs(output_estimation));
+                    NRMS_M_induced = RMSinduced/M;
+                    % mean variance
+                    RMS_DEV_induced = sqrt(sum(deviationInduced.^2)/size(deviationInduced,1));
+
+                    fprintf("Induction accuracy:\n");
+                    fprintf("RMS value is: %f\n", RMSinduced);
+                    fprintf("NRMS value based on range: %f\n", NRMS_W_induced);
+                    fprintf("NRMS value based on absolute maximum: %f\n", NRMS_M_induced);
+
+                    % assigning for further analysis
+                    input_estimation = input_induced;
+                    output_estimation = output_induced;
+                elseif (GREEDY_REDUCTION)
+                    hyp_opt = minimize(hyp, @gp, -100, @infGaussLik, meanfunc, covfunc, likfunc, uGreedy, yGreedy); 
+
+                    % checking performance degradation
+                    [estimationgreedy, deviationgreedy] = gp(hyp_opt, @infGaussLik, meanfunc, covfunc, likfunc, uGreedy, yGreedy, input_estimation);
+
+                    %% KPI-s
+                    % RMS calculation
+                    RMSgreedy = sqrt(sum((estimationgreedy-output_estimation).^2)/size(estimationgreedy,1));
+                    % NRMS - normalization on scale
+                    W = max(output_estimation) - min(output_estimation);
+                    NRMS_W_greedy = RMSgreedy/W;
+                    % NRMS - normalization on absolute maximum
+                    M = max(abs(output_estimation));
+                    NRMS_M_greedy = RMSgreedy/M;
+                    % mean variance
+                    RMS_DEV_greedy = sqrt(sum(deviationgreedy.^2)/size(deviationgreedy,1));
+
+                    fprintf("Induction accuracy:\n");
+                    fprintf("RMS value is: %f\n", RMSgreedy);
+                    fprintf("NRMS value based on range: %f\n", NRMS_W_greedy);
+                    fprintf("NRMS value based on absolute maximum: %f\n", NRMS_M_greedy);
+
+                    % assigning for further analysis
+                    input_estimation = uGreedy;
+                    output_estimation = yGreedy;
+                else
+                    hyp_opt = hyp;
+                end
+            else
+                hyp_opt = minimize(hyp, @gp, -100, @infGaussLik, meanfunc, covfunc, likfunc, input_estimation, output_estimation); % Optimize the marginal likelihood
+            end
+    
+            if (RATIO_OF_TRAIN_VS_TOTAL < 1)
+                % Evaluation of validation data
+                [estimation, deviation] = gp(hyp_opt, @infGaussLik, meanfunc, covfunc, likfunc, input_estimation, output_estimation, input_validation); % extract the mean and covarance functions
+                %% KPI-s
+                % RMS calculation
+                RMS = sqrt(sum((estimation-output_validation).^2)/size(estimation,1));
+                % NRMS - normalization on scale
+                W = max(output_validation) - min(output_validation);
+                NRMS_W = RMS/W;
+                % NRMS - normalization on absolute maximum
+                M = max(abs(output_validation));
+                NRMS_M = RMS/M;
+                % mean variance
+                RMS_DEV = sqrt(sum(deviation.^2)/size(deviation,1));
+                
+                fprintf("EVALUTATION of snippet %d:\n", i);
+                fprintf("RMS value is: %f\n", RMS);
+                fprintf("NRMS value based on range: %f\n", NRMS_W);
+                fprintf("NRMS value based on absolute maximum: %f\n", NRMS_M);
+            end
+    
+            % Evaluation of estimation data
+            [estimationEstimation, deviationEstimation] = gp(hyp_opt, @infGaussLik, meanfunc, covfunc, likfunc, input_estimation, output_estimation, input_estimation); % extract the mean and covarance functions
+    
+            %% KPI-s
+            % RMS calculation
+            RMSest = sqrt(sum((estimationEstimation-output_estimation).^2)/size(estimationEstimation,1));
+            % NRMS - normalization on scale
+            W = max(output_estimation) - min(output_estimation);
+            NRMS_W_est = RMSest/W;
+            % NRMS - normalization on absolute maximum
+            M = max(abs(output_estimation));
+            NRMS_M_est = RMSest/M;
+            % mean variance
+            RMS_DEV_est = sqrt(sum(deviationEstimation.^2)/size(deviationEstimation,1));
+            
+            fprintf("EVALUTATION of snippet %d:\n", i);
+            fprintf("RMS_est value is: %f\n", RMSest);
+            fprintf("NRMS_est value based on range: %f\n", NRMS_W_est);
+            fprintf("NRMS_est value based on absolute maximum: %f\n", NRMS_M_est);
+    
+            f = figure('units','normalized','outerposition',[0 0 1 1]);
+        
+            if (RATIO_OF_TRAIN_VS_TOTAL < 1)
+                % plot the estimation data
+                subplot(2,1,1);
+                confidenceBounds = [estimation+2*sqrt(deviation); flip(estimation-2*sqrt(deviation),1)];
+                confidencePoints = (1:1:numel(estimation))';
+            
+                fill([confidencePoints; flip(confidencePoints)], confidenceBounds, 'y', 'DisplayName', '95% confidence');
+                hold on;
+                plot(estimation,'LineWidth', 2, 'color', 'k', 'LineStyle','--', 'DisplayName', 'estimated by GP');    
+                ylabel('offset');
+                grid on;
+                plot(output_validation, 'LineWidth', 2, 'LineStyle', ':', 'color', 'b', 'DisplayName','validation data');
+                legend;
+                ylabel('offset(m)');
+            end
+    
+            % plot the estimation data
+            subplot(2,1,2);
             confidenceBounds = [estimationEstimation+2*sqrt(deviationEstimation); flip(estimationEstimation-2*sqrt(deviationEstimation),1)];
             confidencePoints = (1:1:numel(estimationEstimation))';
         
@@ -307,107 +393,104 @@ for shiftID=1:numel(OUTPUT_SHIFT)
             plot(estimationEstimation,'LineWidth', 2, 'color', 'k', 'LineStyle','--', 'DisplayName', 'estimated by GP');    
             ylabel('offset');
             grid on;
-            plot(output, 'LineWidth', 2, 'LineStyle', ':', 'color', 'b', 'DisplayName','validation data');
+            plot(output_estimation, 'LineWidth', 2, 'LineStyle', ':', 'color', 'b', 'DisplayName','estimation data');
             legend;
             ylabel('offset(m)');
-            xlabel('samples');
-    
+            
             savefig(f, fullfile(temp_folder_path, plots_folder_name,...
-                                strcat('TimePlot_', num2str(i), name(1:end-4), '.fig')));
+                                strcat('Snippets_', num2str(i), '_', num2str(shiftID), '_driver', num2str(driverID), '.fig')));
             saveas(f, fullfile(temp_folder_path, plots_folder_name,...
-                            strcat('TimePlot_', num2str(i), name(1:end-4), '.png')));
+                            strcat('Snippets_', num2str(i), '_', num2str(shiftID), '_driver', num2str(driverID), '.png')));
             close(f);
+
+            if (GENERATE_KERNEL_CORRELATION_PLOTS && i==1 && shiftID==1)
+            % Evaluation of entire range - Kernel shape check
+            for j=1:size(input_estimation,2)
+                input_range(:,j) = linspace(-1, 1, 30)'; 
+            end
+                    
+            for k=1:size(input_range,2)
+                f = figure('units','normalized','outerposition',[0 0 1 1]);
+                set(f,'defaulttextInterpreter','latex') ;
+                set(f, 'defaultAxesTickLabelInterpreter','latex');  
+                set(f, 'defaultLegendInterpreter','latex');
+                fprintf("Kernel generation k=%d/%d\n", k, size(input_range,2));
+                for n=k+1:size(input_range,2)
+                    for j=1:size(input_range,1)
+                        input_estimation_range = input_range;
+                        input_estimation_range(:,k) = input_range(j,k);
+                        nonIndexed = 1:1:size(input_range,2);
+                        input_estimation_range(:,nonIndexed~=k & nonIndexed~=n) = 0;
+                        [estimationRange, deviationRange] = gp(hyp_opt, @infGaussLik, meanfunc, covfunc, likfunc, input_estimation, output_estimation, input_estimation_range); % extract the mean and covarance functions
+    
+                        estimationRangeArray(k,n, :,j) = estimationRange;
+                        % the j^th variable in the k^th column is constant
+                        % during this for cycle, which means one column of
+                        % estimationRangeArray(k,n) reflect to the change in
+                        % the 2nd variable, not the k^th variable (but the
+                        % n^th).
+                    end
+                    subplot(2,4,n);
+                    a(:,:) = estimationRangeArray(k,n,:,:);
+                    surf(input_range(:,k), input_range(:,n), a);
+                    hold on;
+                    %plot3(input_estimation(:,k), input_estimation(:,n), output_estimation(:,1), 'kx');
+                    xlabel(variables(k)); ylabel(variables(n)); zlabel("$\delta$");
+                    set(gca,'FontSize', 14);
+                end
+                savefig(f, fullfile(temp_folder_path, plots_folder_name,...
+                                strcat('Kernel_', num2str(k), '_', num2str(i), '_driver_', num2str(driverID), '_', name(1:end-4), '.fig')));
+                saveas(f, fullfile(temp_folder_path, plots_folder_name,...
+                                strcat('Kernel_', num2str(k), '_', num2str(i),'_driver_', num2str(driverID), '_', name(1:end-4), '.png')));
+                close(f);
+            end
+
+            end
+           
+    
+            if (GENERATE_OFFSET_TIME_PLOTS)
+                [estimationEstimation, deviationEstimation] = gp(hyp_opt, @infGaussLik, meanfunc, covfunc, likfunc, input_estimation, output_estimation, input);
+                f = figure();
+                confidenceBounds = [estimationEstimation+2*sqrt(deviationEstimation); flip(estimationEstimation-2*sqrt(deviationEstimation),1)];
+                confidencePoints = (1:1:numel(estimationEstimation))';
+            
+                fill([confidencePoints; flip(confidencePoints)], confidenceBounds, 'y', 'DisplayName', '95% confidence');
+                hold on;
+                plot(estimationEstimation,'LineWidth', 2, 'color', 'k', 'LineStyle','--', 'DisplayName', 'estimated by GP');    
+                ylabel('offset');
+                grid on;
+                plot(output, 'LineWidth', 2, 'LineStyle', ':', 'color', 'b', 'DisplayName','validation data');
+                legend;
+                ylabel('offset(m)');
+                xlabel('samples');
+        
+                savefig(f, fullfile(temp_folder_path, plots_folder_name,...
+                                    strcat('TimePlot_', num2str(i), name(1:end-4), '.fig')));
+                saveas(f, fullfile(temp_folder_path, plots_folder_name,...
+                                strcat('TimePlot_', num2str(i), name(1:end-4), '.png')));
+                close(f);
+            end
+        
+            KPI{shiftID,i}= [RMS NRMS_W NRMS_M RMS_DEV RMSest NRMS_W_est NRMS_M_est RMS_DEV_est hyp_opt.cov];
+
+            fprintf("time of shift id %d is %f\n", shiftID, toc);        
         end
     
-        %% KPI-s
-        % RMS calculation
-        RMS = sqrt(sum((estimation-output_validation).^2)/size(estimation,1));
-        % NRMS - normalization on scale
-        W = max(output_validation) - min(output_validation);
-        NRMS_W = RMS/W;
-        % NRMS - normalization on absolute maximum
-        M = max(abs(output_validation));
-        NRMS_M = RMS/M;
-        fprintf("EVALUTATION of snippet %d:\n", i);
-        fprintf("RMS value is: %f\n", RMS);
-        fprintf("NRMS value based on range: %f\n", NRMS_W);
-        fprintf("NRMS value based on absolute maximum: %f\n", NRMS_M);
+        KPIsum(shiftID,:) = [mean(KPI{1}(:,2)) max(KPI{1}(:,2)) std(KPI{1}(:,3))];
     
-        KPI{numberOfPreviewInformation, shiftID}(i,:) = [RMS NRMS_W NRMS_M hyp_opt.cov];
-    
-    end
-
-    KPIsum(missingInputID, :) = [mean(KPI{1}(:,2)) max(KPI{1}(:,2)) std(KPI{1}(:,3))];
-    
-    f = figure();
-    subplot(3,1,1);
-    plot(KPI{numberOfPreviewInformation,shiftID}(:,1), 'Marker','x', 'LineWidth', 1.5, 'color', 'b');
-    grid on;
-    title(strcat('RMS value for', {' '}, num2str(shiftOnOutput), {' '}, 'shift on output'));
-    ylabel('offset(m)'); xlabel('epoch');
-    
-    subplot(3,1,2);
-    plot(KPI{numberOfPreviewInformation,shiftID}(:,2), 'Marker','x', 'LineWidth', 1.5, 'color', 'b');
-    grid on;
-    title(strcat('NRMS_W value for', {' '}, num2str(shiftOnOutput), {' '}, 'shift on output'));
-    xlabel('epoch');
-    
-    subplot(3,1,3);
-    plot(KPI{numberOfPreviewInformation,shiftID}(:,3), 'Marker','x', 'LineWidth', 1.5, 'color', 'b');
-    grid on;
-    title(strcat('NRMS_M value for', {' '}, num2str(shiftOnOutput), {' '}, 'shift on output'));
-    xlabel('epoch');
-    
-    savefig(f, fullfile(temp_folder_path, plots_folder_name,...
-                            strcat('KPI_', num2str(shiftID), name(1:end-4), '.fig')));
-    saveas(f, fullfile(temp_folder_path, plots_folder_name,...
-                    strcat('KPI_', num2str(shiftID), name(1:end-4), '.png')));
-    close(f);
-
-end % end of shift selection
-
-%% SUMMARY PLOTS OF KPIs
-f = figure();
-
-for i=1:size(KPI,2)
-    subplot(3,1,1);
-    plot(shiftOnOutputSelection(i), mean(KPI{numberOfPreviewInformation,i}(:,1)), 'bo');
-    hold on; grid on;
-    title('Mean RMS for various selection')
-    xlabel('shift on output'); ylabel('offset RMS(m)');
-
-    subplot(3,1,2);
-    plot(shiftOnOutputSelection(i), mean(KPI{numberOfPreviewInformation,i}(:,2)), 'bo');
-    hold on; grid on;
-    title('Mean NRMS_W for various selection')
-    xlabel('shift on output'); ylabel('offset NRMS');
-
-    subplot(3,1,3);
-    plot(shiftOnOutputSelection(i), mean(KPI{numberOfPreviewInformation,i}(:,3)), 'bo');
-    hold on; grid on;
-    title('Mean NRMS_M for various selection')
-    xlabel('shift on output'); ylabel('offset NRMS');
+    end % end of shift selection
+    save( fullfile(temp_folder_path, plots_folder_name,strcat('KPI_input_', num2str(kernelID), '_driver_', num2str(driverID), '.mat')), 'KPI');
+    save( fullfile(temp_folder_path, plots_folder_name,strcat('KPIsum_input_', num2str(kernelID), '_driver_', num2str(driverID), '.mat')), 'KPIsum');
+end
 end
 
-savefig(f, fullfile(temp_folder_path, plots_folder_name,...
-                            strcat('KPISummary_', name(1:end-4), '_', num2str(numberOfPreviewInformation), '.fig')));
-saveas(f, fullfile(temp_folder_path, plots_folder_name,...
-                strcat('KPISummary_', name(1:end-4), '_', num2str(numberOfPreviewInformation), '.png')));
-close(f);
-
-save( fullfile(temp_folder_path, plots_folder_name,'KPI.mat'), 'KPI');
-
-end
-save( fullfile(temp_folder_path, plots_folder_name,'KPIsum.mat'), 'KPIsum');
-end
-
-function curveTypes = calculateCurveType(segment_m, indexes, name)
+function curveTypes = calculateCurveType(segment_m_m, indexes, name)
 
 global temp_folder_path plots_folder_name
     % return: curveTypes: 0 = unknown, 1=straight, 2=left, 3=right
     thd = 3.5e-4;
-    curveTypes = zeros(size(segment_m,1),1);
-    curvature = movmean(segment_m(:,indexes.c2)*2, 50);
+    curveTypes = zeros(size(segment_m_m,1),1);
+    curvature = movmean(segment_m_m(:,indexes.c2)*2, 50);
     straightLine = abs(curvature) < thd;
     straightLine = morphologyOpen(straightLine, 100);
     straightLine = morphologyOpen(straightLine, 50);
@@ -422,19 +505,6 @@ global temp_folder_path plots_folder_name
     curveTypes(leftCurve&~curveTransition) = 2;
     curveTypes(rightCurve&~curveTransition) = 3;
     curveTypes(curveTransition) = 2.5;
-
-    g = figure();
-
-    plot(segment_m(:,indexes.X_abs), segment_m(:, indexes.Y_abs));
-    grid on; hold on;
-    plot(segment_m(curveTypes==1, indexes.X_abs), segment_m(curveTypes==1, indexes.Y_abs), 'ko');
-    legend('original', 'straights');
-    savefig(g, fullfile(temp_folder_path, plots_folder_name,...
-                strcat('Map', name(1:end-4), '.fig')));
-    saveas(g, fullfile(temp_folder_path, plots_folder_name,...
-                strcat('Map_', name(1:end-4), '.png')));
-    close(g);
-
 end
 
 function dataOut = morphologyOpen(dataIn, windowSize)
@@ -466,9 +536,9 @@ inputVariations = dec2bin(x', numberOfInputs) == '1';
 
 end
 
-function input = normAndCentral(input)
+function [input,c,s] = normAndCentral(input)
 for i=1:size(input,2)
-    input(:,i) = (input(:,i)-mean(input(:,i)))/max(abs(input(:,i)));
+     [input(:,i), c(i), s(i)] = normalize(input(:,i));
 end
 end
 

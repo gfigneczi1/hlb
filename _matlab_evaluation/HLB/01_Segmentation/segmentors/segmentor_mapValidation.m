@@ -3,7 +3,7 @@ function [segments] = segmentor_mapValidation(input_folder)
 % 1. Consider only RTK_Fixed parts of the map, but with debouncing!
 % Therefore if the RTK_Fixed disappears to a specific time, but returns
 % within an interval, the segment shall not be cut!
-    zalaData = 1;
+    zalaData = 0;
 
     matFiles = dir(fullfile(input_folder,'/*.mat'));
     matFilesTable = struct2table(matFiles);
@@ -48,30 +48,40 @@ function [segments] = segmentor_mapValidation(input_folder)
         if (testStatus == 1)
             % VALIDATOR FILE
             rawData = redundantPointsFilter(rawData, "Time");
-            [rawData.lanevalidity, rawData.LCL, rawData.LCR] = lanevaliditycheck(rawData);
-            rawData.theta_calc = theta_recalc(rawData);
+            if (contains(matFiles(fileID).name, "south"))
+                rawData.theta_calc = theta_recalc(rawData,1);
+            else
+                rawData.theta_calc = theta_recalc(rawData,0);
+            end
             rawData.invalidVx = rawData.VelocityX_ESP < 10;
-            rawData.validc0 = abs(0.5*(rawData.c01_left+rawData.c01_right)) < 0.7; 
+            rawData.validc0 = abs(0.5*(rawData.c01_left+rawData.c01_right)) < 1.5; 
             [rawData.localization, rawData.roadType] = localization(rawData, input_folder);
             rawData = debouncer(rawData, "GPS_status", 8, 20); % last arg is debounce time in [s]
-            rawData = structure_filter(rawData, "GPS_status", 8);
+            rawData = structure_filter(rawData, "GPS_status", 4, "GT");
             %rawData = structure_filter(rawData, "lanevalidity", 1);
             % 1: rural road, 2: highway
             %rawData = structure_filter(rawData, "roadType", 1);
-            rawData = structure_filter(rawData, "invalidVx",0);
+            rawData = structure_filter(rawData, "invalidVx",0, "EQ");
             % only necessary if opposite direction traffic is supposed
-            rawData = structure_filter(rawData, "validc0",1);
+            rawData = structure_filter(rawData, "validc0",1, "EQ");
         elseif (mandatoryStatus == 1)
             % only mandatory fields, no test signals
+            [rawData.X_abs,rawData.Y_abs] = deg2utm(rawData.LatPos_abs, rawData.LongPos_abs);
+            rawData.X_abs = rawData.X_abs';
+            rawData.Y_abs = rawData.Y_abs';
             rawData = redundantPointsFilter(rawData, "Time");
-            rawData.theta_calc = theta_recalc(rawData);
+            if (contains(matFiles(fileID).name, "south"))
+                rawData.theta_calc = theta_recalc(rawData,1);
+            else
+                rawData.theta_calc = theta_recalc(rawData,0);
+            end
             rawData.invalidVx = rawData.VelocityX_ESP < 10;
             [rawData.localization, rawData.roadType] = localization(rawData, input_folder);
             rawData = debouncer(rawData, "GPS_status", 4, 20); % last arg is debounce time in [s]
-            rawData = structure_filter(rawData, "GPS_status", 4);
+            rawData = structure_filter(rawData, "GPS_status", 4, "GT");
             % 1: rural road, 2: highway
             %rawData = structure_filter(rawData, "roadType", 1);
-            rawData = structure_filter(rawData, "invalidVx",0);
+            rawData = structure_filter(rawData, "invalidVx",0, "EQ");
         end
         signals = fieldnames(rawData);
         n = length(signals);

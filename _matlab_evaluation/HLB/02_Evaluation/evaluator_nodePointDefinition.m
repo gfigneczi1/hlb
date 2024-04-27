@@ -21,18 +21,19 @@ model_ver = 0; % ground truth
 options.parameters.P1_vector = linspace(0,240,50);
 options.parameters.P2_vector = linspace(0,240,50);
 options.parameters.P3_vector = linspace(0,240,50);
-options.parameters.Np = 3;
+options.parameters.Np = 15;
 options.parameters.mindP = 10;
-options.parameters.maxDist = 250;
+options.parameters.maxDist = 150;
 options.startIdxSurface = 3000;
 options.endIdxSurface = 3000;
 options.startIdxInitvalues = 1000;
 options.startIdxGlobal = 1000;
 options.independentInitialValues = 21;
-options.stepSizeLongRange = 400;
+options.stepSizeLongRange = 200;
 options.parameters.P0 = zeros(21,1); % LDM parameter set
 options.parameters.P3in = [0; 28.576; 98.268]; % node point parameter set
 options.parameterDependency = "false";
+options.runGlobalOptimization = false;
 
 %% Node point optimization
 % Calling the node point definition for different segments
@@ -41,13 +42,18 @@ for i=1:length(segments.segments)
     disp(strcat("Evaluating file",{' '},num2str(i),'/',num2str(length(segments.segments))));
     segment = segments.segments(i).segment;
     outputStruct{i} = functional_nodePointDefinitionElementary(segment,config, options);
-    p1(i) = max(10/250,outputStruct{i}.P3in(1));
-    p2(i) = outputStruct{i}.P3in(2);
-    p3(i) = outputStruct{i}.P3in(3);
-    disp(strcat('Node point distances for', {' '}, segments.segments(i).name, {' '},'are:'));
-    disp([(p1(i)*250) (p1(i)+p2(i))*250 (p1(i)+p2(i)+p3(i))*250]);
+    if (options.runGlobalOptimization)
+        p1(i) = max(10/250,outputStruct{i}.P3in(1));
+        p2(i) = outputStruct{i}.P3in(2);
+        p3(i) = outputStruct{i}.P3in(3);
+        disp(strcat('Node point distances for', {' '}, segments.segments(i).name, {' '},'are:'));
+        disp([(p1(i)*250) (p1(i)+p2(i))*250 (p1(i)+p2(i)+p3(i))*250]);
+    end
 end
 
+plot_nodePointNumberAnalysis(outputStruct, options, config);
+
+if (options.runGlobalOptimization)
 %% Global optimum parameters - together for all drivers
 % Calculate the characteristic distance set and adding the results for all
 % drivers
@@ -74,6 +80,7 @@ for i=1:length(segments.segments)
     outputStruct{i}.global.traj = traj;
     outputStruct{i}.global.ref = ref;
     outputStruct{i}.name = segments.segments(i).name;
+end
 end
 
 %% Evaluation

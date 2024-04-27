@@ -1,4 +1,4 @@
-function [segments] = segmentor_driverModel(input_folder)
+function [segments] = segmentor_modelTraining(input_folder)
 % Segmentation rules
 % 1. GPS_Time based redundant points filter (dt == 50ms)
 % 2. lane validity for proper corridor and Lane Change detection (robust
@@ -43,7 +43,7 @@ function [segments] = segmentor_driverModel(input_folder)
                 % Generic validation and cut
                 [rawData.localization, rawData.roadType] = localization(rawData, input_folder);        
                 rawData = debouncer(rawData, "GPS_status", 8, 20); % last arg is debounce time in [s]
-                rawData.invalidC0 = ((abs(0.5*(rawData.LaneEdgePositionLeft+rawData.LaneEdgePositionRight)) > 0.8)+(isnan(rawData.LaneEdgePositionLeft))+(rawData.LaneEdgePositionLeft==0)+(rawData.LaneEdgePositionLeft>3.5)+(rawData.LaneEdgePositionRight<-3.5)) > 0;
+                rawData.invalidC0 = ((abs(0.5*(rawData.LaneEdgePositionLeft+rawData.LaneEdgePositionRight)) > 1.5)+(isnan(rawData.LaneEdgePositionLeft))+(rawData.LaneEdgePositionLeft==0)+(rawData.LaneEdgePositionLeft>3.5)+(rawData.LaneEdgePositionRight<-3.5)) > 0;
                 rawData.invalidC1 = abs(rawData.LaneOrientation) > 0.05; 
                 rawData.invalidSpeed = rawData.VelocityX < 5;
                 rawData = extend(rawData,"invalidC0",1,-3);
@@ -55,13 +55,6 @@ function [segments] = segmentor_driverModel(input_folder)
                                 
                 rawData.X_abs = rawData.LongPos_abs * 40075000 .* cos(rawData.LatPos_abs*pi()/180) / 360;
                 rawData.Y_abs = rawData.LatPos_abs * 111.32*1000;
-                if (contains(matFiles(fileID).name, "62B") || contains(matFiles(fileID).name, "south"))
-                    rawData.theta_calc = theta_recalc(rawData, 1);
-                elseif (contains(matFiles(fileID).name, "M7A") && roadTypeFilter==2)
-                    rawData.theta_calc = theta_recalc(rawData, 1);
-                else
-                    rawData.theta_calc = theta_recalc(rawData, 0);
-                end
                 
                 uncut = rawData;
                 cutInfo.roadType = rawData.roadType ~=1;
@@ -76,7 +69,7 @@ function [segments] = segmentor_driverModel(input_folder)
                 %rawData = structure_filter(rawData, "isStraight", 1, "EQ");
                 rawData = structure_filter(rawData, "invalidSpeed", 0, "EQ");
                 rawData = structure_filter(rawData, "invalidC0", 0, "EQ");
-                rawData = structure_filter(rawData, "invalidC1", 0, "EQ");
+                %rawData = structure_filter(rawData, "invalidC1", 0, "EQ");
                 if (isfield(rawData,'control_active'))
                     %rawData = structure_filter(rawData, "control_active", 3, "EQ");
                 end

@@ -25,7 +25,7 @@ pathPlanning (segments, config);
 end
 
 function pathPlanning (segments, config)
-global modelMode globalStartIndex globalStopIndex indexes segment_m parameters
+global modelMode globalStartIndex globalStopIndex indexes segment_m parameters config
 
 modelMode = "kinematic";
 
@@ -35,7 +35,10 @@ name = segments.segments(1).name;
 
 %% single simulation
 parameters.P_npDistances = [0.15, 0.2, 0.25];
-parameters.P_ELDM = [0.2 0 0 0.2 0 0 -0.15; 0 0.2 0 0 0.2 0 -0.15; 0 0 0.2 0 0 0.2 -0.15]; %reshape([2.86078399132926;0.884814215672794;-1.90657794718284;-3.09943416608130;-0.665457759838954;2.30236448840005;0.348462602099426;-0.107035325513227;-0.271014703397729;1.07959046302992;-0.775251579323662;-0.252977961446196;-0.822164501814478;1.36747233514778;0.113183483561418;-0.124241139196637;-0.454142531428492;0.293625990988783;-0.000983031283019174;-0.000983031283019174;-0.000983031283019174], 3,7);
+parameters.P_ELDM = [-0.230023302976724	0.468296365511336	-0.190385591603131	-0.174774014076777	0.368721721474336	-0.211056276548872	-0.231339325522338;
+-0.255003694198650	0.351441025614799	-0.0543410925120097	0.0271660325742101	-0.0792050028224978	0.0511467767037086	-0.231339325522338;
+0.0216319451469262	-0.120626235909642	0.132344563327706	0.592550356037434	-0.870361141895546	0.278434887426610	-0.231339325522338];
+%parameters.P_ELDM = reshape([2.86078399132926;0.884814215672794;-1.90657794718284;-3.09943416608130;-0.665457759838954;2.30236448840005;0.348462602099426;-0.107035325513227;-0.271014703397729;1.07959046302992;-0.775251579323662;-0.252977961446196;-0.822164501814478;1.36747233514778;0.113183483561418;-0.124241139196637;-0.454142531428492;0.293625990988783;-0.000983031283019174;-0.000983031283019174;-0.000983031283019174], 3,7);
 %parameters.P_ELDM = zeros(3,7);
 
 temp_folder_path = config.root;
@@ -58,7 +61,7 @@ globalStopIndex = size(segment_m,1);
 end
 
 function [path, U, dY, plannedPath, intentionPath, vehicleStateMemory] = pathGenerationLite()
-    global segment_m indexes globalStartIndex globalStopIndex vehicleState parameters metadata x_k1 modelMode
+    global segment_m indexes globalStartIndex globalStopIndex vehicleState parameters metadata x_k1 modelMode config
     % Entire model is calculated in the global frame!
     vehicleState = initVehicleState(segment_m, indexes, globalStartIndex, modelMode);
     vehicleStateCheck = initVehicleState(segment_m, indexes, globalStartIndex, "dynamicSimplified");
@@ -73,7 +76,9 @@ function [path, U, dY, plannedPath, intentionPath, vehicleStateMemory] = pathGen
     coefficients = coefficients_k1;
     displacementVector = zeros(2,1);
     x_k1 = zeros(5,1); x_k1(3) = segment_m(1,indexes.velocityX);
+    initialized = false;
 
+    try
     for i=globalStartIndex:globalStopIndex
         % calculate time step
         dT = segment_m(i, indexes.q_T0) - segment_m(i-1, indexes.q_T0);
@@ -110,6 +115,14 @@ function [path, U, dY, plannedPath, intentionPath, vehicleStateMemory] = pathGen
                     [vehicleState.X, vehicleState.Y, vehicleState.theta]);
                 
                 [coefficients, u, dy, X,Y,theta] = optimalPath (scenario, indexes, vehicleState, coefficients, c0, c1, parameters);
+                if(initialized)
+                    F = [F;getframe(gcf)];
+                else
+                    F = getframe(gcf);
+                    initialized = true;
+                end
+                
+    
                 replan = 0;
                 U = [U u]; dY = [dY dy];
                 origo = [vehicleState.X, vehicleState.Y, vehicleState.theta]'; % in [m m rad]
@@ -167,9 +180,27 @@ function [path, U, dY, plannedPath, intentionPath, vehicleStateMemory] = pathGen
         intentionPath(i,2) = vehicleState.Y + coefficients(1).coefficients(1)*cos(vehicleState.theta);
         vehicleStateMemory{i} = vehicleState;
     end
+    catch
+        disp('Simulation failed on the way...');
+    end
+
+    writerObj = VideoWriter(fullfile(config.root, 'optimalPath.avi'));%% file name
+    writerObj.FrameRate = 1/(0.05);
+    fprintf('VIDEO GENERATION STARTED...\n');
+    
+    % open the video writer
+    open(writerObj);
+    % write the frames to the video
+    for i=1:length(F)
+        % convert the image to a frame
+        frame = F(i) ;    
+        writeVideo(writerObj, frame);
+    end
+    % close the writer object
+    close(writerObj);
 end
 
-function [coefficients, u, dy, X,Y,theta] = optimalPath(scenario, indexes, vehicleState, coefficients, c0, c1, parameters)
+function [coefficients, u, dy, X,Y,theta, f] = optimalPath(scenario, indexes, vehicleState, coefficients, c0, c1, parameters)
 % calculating cost sub-functions
 % cost 1: instinctive path
 [coefficients, u, dy, X,Y,theta] = eldmLite (scenario, indexes, vehicleState, coefficients, parameters.P_npDistances, parameters.P_ELDM, c0, c1);
@@ -192,7 +223,7 @@ end
 instinctivePathEgoFrame = waypoints;
 
 % transforming corridor to the ego frame
-x = 0:dx:sum(parameters.P_npDistances)*250;
+x = 0:dx:coefficients(end).sectionBorders(2);
 T = [cos(vehicleState.theta) sin(vehicleState.theta);
     -sin(vehicleState.theta) cos(vehicleState.theta)];
 corridorGlobalFrame = [scenario(:,indexes.corrX) scenario(:,indexes.corrY)];
@@ -202,9 +233,16 @@ corridorEgoFrame = (corridorGlobalFrame - [vehicleState.X vehicleState.Y])*T';
 corridorEgoFrameResampled(:,2) = spline(corridorEgoFrame(:,1), corridorEgoFrame(:,2), x) + 1.875;
 corridorEgoFrameResampled(:,3) = spline(corridorEgoFrame(:,1), corridorEgoFrame(:,2), x) - 1.875;
 corridorEgoFrameResampled(:,1) = x;
+centerLineEgoFrameResampled(:,2) = spline(corridorEgoFrame(:,1), corridorEgoFrame(:,2), x);
+centerLineEgoFrameResampled(:,1) = x;
 
 instinctivePathEgoFrameResampled(:,2) = spline(instinctivePathEgoFrame(:,1), instinctivePathEgoFrame(:,2), x);
 instinctivePathEgoFrameResampled(:,1) = x;
+
+instinctivePathEgoFrameResampledSpline(:,2) = spline(X,Y,x);
+instinctivePathEgoFrameResampledSpline(:,1) = x;
+
+nodePoints(:,1) = X; nodePoints(:,2) = Y;
 
 % creating base map
 a = 10; % second order coefficient for cost term
@@ -230,21 +268,27 @@ end
 w_fd = 0.5; w_tr = 0.5;
 cost = w_fd*costFreeDriving + w_tr*costTraffic;
 
+% plotting
+f = figure();
+
 h = pcolor(x, y_array, cost);
 clim([0 1]); 
 set(h,'LineStyle','none');
 view(2);
-xlim([0,150]); ylim([-10,10]);
+xlim([0,coefficients(end).sectionBorders(2)]); ylim([min(-10, min(corridorEgoFrameResampled(:,3))),max(10, max(corridorEgoFrameResampled(:,2)))]);
 hold on;
 plot(instinctivePathEgoFrameResampled(:,1), instinctivePathEgoFrameResampled(:,2), 'LineWidth', 2, 'color', 'k');
 plot(corridorEgoFrameResampled(:,1), corridorEgoFrameResampled(:,2), 'LineWidth', 2, 'LineStyle','--', 'color', 'g');
 plot(corridorEgoFrameResampled(:,1), corridorEgoFrameResampled(:,3), 'LineWidth', 2, 'LineStyle','--', 'color', 'g');
 plot(driverPathEgoFrame(:,1), driverPathEgoFrame(:,2), 'LineWidth', 1.5, 'color', 'r');
-axis equal;
-legend('cost map', 'instinctive path', 'lane left', 'lane right', 'driver path');
+plot(centerLineEgoFrameResampled(:,1), centerLineEgoFrameResampled(:,2), 'LineWidth', 1.5, 'Color','w', 'LineStyle', '--');
+plot(nodePoints(:,1), nodePoints(:,2), 'bo', 'LineWidth',3);
+plot(instinctivePathEgoFrameResampledSpline(:,1), instinctivePathEgoFrameResampledSpline(:,2), 'LineWidth', 2, 'color', 'y');
+%axis equal;
+legend('cost map', 'instinctive path', 'lane left', 'lane right', 'driver path', 'centerline', 'node points', 'spline planned path');
 colorbar; colormap(parula);
 hold off;
-pause(0.05);
+pause(0.01);
 end
 
 function vehicleState = initVehicleState(segment_m, indexes, index, mode)

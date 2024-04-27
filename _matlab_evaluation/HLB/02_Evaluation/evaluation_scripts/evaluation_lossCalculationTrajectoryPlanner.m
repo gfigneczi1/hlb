@@ -4,10 +4,15 @@ if (isempty(traj))
     loss = 0;
 else
     ego_path = reference;
-    if (ver == 0)
+    if (ver==-1)
+        % nrms
+        m = (ego_path-traj).^2;
+        loss = sqrt(sum(m.^2)/size(ego_path,1));
+        %loss = loss/(max(ego_path)-min(ego_path));
+    elseif (ver == 0)
+        % rms
         m = sqrt((ego_path(:,1)-traj(:,1)).^2+(ego_path(:,2)-traj(:,2)).^2);
-        loss = sqrt(sum((ego_path(:,1)-traj(:,1)).^2+(ego_path(:,2)-traj(:,2)).^2)/size(ego_path,1));
-        loss = loss/(max(m)-min(m));
+        loss = sqrt(sum(m.^2)/size(ego_path,1));
     elseif (ver == 1)
         loss = 0;
         for i=1:size(traj,1)

@@ -1,6 +1,6 @@
 clear;
-pathToCsv = "C:\git\KDP\HLB_for_AV_MotionControl\02_Results\MassMeasurements\Dr013\Dr013_trafficLabelsSecs.xlsx";
-pathToMat = 'C:\git\KDP\HLB_for_AV_MotionControl\02_Results\MassMeasurements\Dr013\Dr013_2022-11-30_62A.mat';
+pathToCsv = "C:\git\KDP\HLB_for_AV_MotionControl\02_Results\MassMeasurements\Dr015\Dr015_trafficLabelsSecs.xlsx";
+pathToMat = 'C:\git\KDP\HLB_for_AV_MotionControl\02_Results\MassMeasurements\Dr015\Dr015_2022-11-30_62B.mat';
 
 %% Mapping of object types
 % 1 - normal, convoy-normal
@@ -38,6 +38,10 @@ for i=1:size(traffic,1)
         startTime = find(segment.q_T0 > traffic.trafficStart(i), 1);
         endTime = find(segment.q_T0 > traffic.trafficEnd(i), 1);
         oncomingTraffic(startTime:endTime) = 3;
+    elseif(contains(convertCharsToStrings(traffic.objType{i}), "in overtake"))
+        startTime = find(segment.q_T0 > traffic.trafficStart(i), 1);
+        endTime = find(segment.q_T0 > traffic.trafficEnd(i), 1);
+        oncomingTraffic(startTime:endTime) = 4;
     end
     if(contains(convertCharsToStrings(traffic.objInFrontType{i}), "normal"))
         startTime = find(segment.q_T0 > traffic.trafficInFrontStart(i), 1);
