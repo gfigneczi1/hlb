@@ -1,0 +1,5 @@
+# How to run evaluation?
+First, open the repository in MATLAB (2019b or higher), navigate to <root>/_matlab_evaluation and add HLB folder and subfolders to the path. Then, navigate to /HLB folder.\
+You can switch the between segmentation profile and evaluation profiles in the config.json file, which is found in <root>/_temp folder. You can explore the available segmentation and evaluation profiles in <root>/_matlab_evaluation/HLB/01_Segmentation/segmentor.m and 02_Evaluation/evaluator.m files. You must give the right segmentor and evaluator in the bottom of the config.json. You shall not modify the rest of this file.\
+Also, please place the input measurement data in .mat extension in the _temp folder. \
+Then, from MATLAB, run the matlab_evaluation_cover.m file (without any further parameters). Results are seen in the command window.
