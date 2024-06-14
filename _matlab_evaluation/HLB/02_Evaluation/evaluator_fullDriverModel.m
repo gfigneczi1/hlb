@@ -1,85 +1,233 @@
 function evaluator_fullDriverModel(segments,config)
-  
+SIMULATION_MODE = "PARAMETER_VALIDATION_FROM_FILE";
 global segment_m indexes globalStartIndex globalStopIndex vehicleState parameters metadata corFine net refFine modelID nrmsLoss nrmsLossManual dts modelMode
 
 % path = [0:1:1000, zeros(1,1001)]';
 % targetSpeed = 30; %kph
 % vehiclePath = functional_vehicleModelTest(path, targetSpeed);
 %     
-    %% single simulation
-    parameters.P_npDistances = [0.1, 0.2, 0.3];
-    parameters.numberOfNodePoints = 3;
-    %parameters.P_ELDM = reshape([2.86078399132926;0.884814215672794;-1.90657794718284;-3.09943416608130;-0.665457759838954;2.30236448840005;0.348462602099426;-0.107035325513227;-0.271014703397729;1.07959046302992;-0.775251579323662;-0.252977961446196;-0.822164501814478;1.36747233514778;0.113183483561418;-0.124241139196637;-0.454142531428492;0.293625990988783;-0.000983031283019174;-0.000983031283019174;-0.000983031283019174], 3,7);
-    parameters.P_ELDM = zeros(3,7);
-    parameters.P_replanCycle = 10;
-    parameters.vehicleParameters.wheelBase = 2.7;
-    parameters.vehicleParameters.r = 0.309725; 
-    parameters.vehicleParameters.c_alfaf = 8600; 
-    parameters.vehicleParameters.c_sf = 23000; 
-    parameters.vehicleParameters.c_alfar = 8600; 
-    parameters.vehicleParameters.c_sr = 23000;
-    parameters.vehicleParameters.m = 1519;
-    parameters.vehicleParameters.Jwheel = 250; 
-    parameters.vehicleParameters.J = 1818;
-    parameters.vehicleParameters.A = 1.5; 
-    parameters.vehicleParameters.c_w = 0; 
-    parameters.vehicleParameters.rho_air = 1; 
-    parameters.vehicleParameters.lf = 1; 
-    parameters.vehicleParameters.lr = 1.5; 
-% 
-     segment = segments.segments(1).segment;
-    [~, segment_m, indexes] = prepareInputForPlanner(segment);
-    
-    globalStartIndex = 2; % minimum is 2, otherwise it fails!
-    globalStopIndex = size(segment_m,1);
 
-    corFine = corridorGeneration(0.5);
-    refFine = referenceGeneration(0.5);
-% 
-%     for i=1:length(segments.segments)
-     segment = segments.segments(1).segment;
-     [~, segment_m, indexes] = prepareInputForPlanner(segment);
-     
-     globalStartIndex = 2; % minimum is 2, otherwise it fails!
-     globalStopIndex = size(segment_m,1);
-%     
-%     %% Definition of the parameters
-%     % Planner: offset model+curve fitting model
-%     % Curve policy: none
-% 
-%     
-%     
-    % Definition of metadata
-    metadata.pathValidity = 1;
-    
-    corFine = corridorGeneration(0.5);
-    refFine = referenceGeneration(0.5);
-    
-    modelID = "groundTruth";
-    modelMode = "kinematic";
-    %[pathLite, U, dY, ~, intentionPathLite, vehicleStateMemory] = pathGenerationLite();
+parameters.P_npDistances = [0.04, 0.116, 0.388];
+parameters.numberOfNodePoints = 3;
+%parameters.P_ELDM = reshape([2.86078399132926;0.884814215672794;-1.90657794718284;-3.09943416608130;-0.665457759838954;2.30236448840005;0.348462602099426;-0.107035325513227;-0.271014703397729;1.07959046302992;-0.775251579323662;-0.252977961446196;-0.822164501814478;1.36747233514778;0.113183483561418;-0.124241139196637;-0.454142531428492;0.293625990988783;-0.000983031283019174;-0.000983031283019174;-0.000983031283019174], 3,7);
+parameters.P_ELDM = zeros(3,7);
+parameters.P_replanCycle = 10;
+parameters.vehicleParameters.wheelBase = 2.7;
+parameters.vehicleParameters.r = 0.309725; 
+parameters.vehicleParameters.c_alfaf = 8600; 
+parameters.vehicleParameters.c_sf = 23000; 
+parameters.vehicleParameters.c_alfar = 8600; 
+parameters.vehicleParameters.c_sr = 23000;
+parameters.vehicleParameters.m = 1519;
+parameters.vehicleParameters.Jwheel = 250; 
+parameters.vehicleParameters.J = 1818;
+parameters.vehicleParameters.A = 1.5; 
+parameters.vehicleParameters.c_w = 0; 
+parameters.vehicleParameters.rho_air = 1; 
+parameters.vehicleParameters.lf = 1; 
+parameters.vehicleParameters.lr = 1.5; 
 
-    [path, U, dY, ~, intentionPath] = pathGeneration();
-    parameters.P_ELDM = reshape(functional_driverModelLearning(U, dY ,8), 3,7);
-% 
-%     parameters_out(i).U = U;
-%     parameters_out(i).dY = dY;
-%     parameters_out(i).drID = str2num(segments.segments(i).name(3:5));
-%     end
-%     save(fullfile(config.root,"plots", 'parametersAllDrivers.mat'), 'parameters_out');
-%     
-%     
-%     modelID = "eldm";
-%     parameters.P_curvePolicy(1) = 0.01;
-%     parameters.P_curvePolicy(2) = 0;
-%     parameters.P_curvePolicy(3) = 0.75;
-%     
-%     path = pathGeneration();
-% 
-%     options = optimset('PlotFcns',@optimplotfval);
-%     parameters.P_curvePolicy = fminsearch(@optimizationLoss, parameters.P_curvePolicy, options);
-% 
-%     path = pathGeneration();
+switch SIMULATION_MODE
+    case "SINGLE_SIMULATION"
+        modelID = "groundTruth";
+        modelMode = "kinematic";
+        segment = segments.segments(1).segment;
+        [~, segment_m, indexes] = prepareInputForPlanner(segment);
+        
+        globalStartIndex = 2; % minimum is 2, otherwise it fails!
+        globalStopIndex = size(segment_m,1);
+        
+        corFine = corridorGeneration(0.5);
+        refFine = referenceGeneration(0.5);
+    case "DATA_GENERATION"
+        for i=1:length(segments.segments)
+            segment = segments.segments(i).segment;
+            [~, segment_m, indexes] = prepareInputForPlanner(segment);
+            segment_m(:,indexes.c0) = movmean(segment_m(:,indexes.c0),180);
+            segment_m(:,indexes.LaneCurvature) = movmean(segment_m(:,indexes.LaneCurvature),180);
+
+            npDistances(1) = parameters.P_npDistances(1)*250;
+            for np=2:length(parameters.P_npDistances)
+                npDistances(np) = npDistances(np-1)+parameters.P_npDistances(np)*250;
+            end
+            U = []; dY=[];
+            for j=1:parameters.P_replanCycle:size(segment_m,1)
+                % loop through data and calculate local distance at all
+                % points
+                egoPos = [segment_m(j,indexes.X_abs), segment_m(j,indexes.Y_abs)];
+                locDistances = (sum((([segment_m(j:end,indexes.X_abs) segment_m(j:end,indexes.Y_abs)]-egoPos).^2)')).^0.5;
+                locIndeces = []; realNpDistances=[];
+                for np=1:length(npDistances)
+                    if (isempty(find(locDistances>npDistances(np),1)))
+                        break;
+                    end
+                    locIndeces(np) = find(locDistances>npDistances(np),1);
+                    realNpDistances(np) = locDistances(locIndeces(np));
+                end
+                if (length(realNpDistances)~=length(npDistances))
+                    break;
+                elseif (all(abs(realNpDistances-npDistances)<3))
+                    % node points are kind-of-good
+                    for np=1:length(npDistances)
+                        if (np==1)
+                            u(np,1) = mean(segment_m(j:j+locIndeces(np)-1,indexes.LaneCurvature));
+                        else
+                            u(np,1) = mean(segment_m(j+locIndeces(np-1):j+locIndeces(np)-1,indexes.LaneCurvature));
+                        end
+                        dy(np,1) = -segment_m(j+locIndeces(np)-1,indexes.c0);
+                    end
+                    U = [U u]; dY = [dY dy];
+                end
+            end
+            plot(U(1,:), dY(1,:), 'bo');
+            parameters_out(i).U = U/0.001;
+            parameters_out(i).dY = dY;
+            parameters_out(i).drID = str2num(segments.segments(i).name(3:5));
+         end
+         save(fullfile(config.root,"plots", 'parametersAllDrivers.mat'), 'parameters_out');
+    case "PARAMETER_LEARNING"
+        for i=1:length(segments.segments)
+            segment = segments.segments(i).segment;
+            [~, segment_m, indexes] = prepareInputForPlanner(segment);
+             
+            globalStartIndex = 2; % minimum is 2, otherwise it fails!
+            globalStopIndex = size(segment_m,1);
+             
+            % Definition of metadata
+            metadata.pathValidity = 1;
+            
+            corFine = corridorGeneration(0.5);
+            refFine = referenceGeneration(0.5);
+            
+            modelID = "groundTruth";
+            modelMode = "kinematic";
+        
+            [path, U, dY, ~, intentionPath] = pathGeneration();
+            parameters.P_ELDM = reshape(functional_driverModelLearning(U, dY ,8), 3,7);
+        
+            parameters_out(i).U = U/0.001;
+            parameters_out(i).dY = dY;
+            parameters_out(i).drID = str2num(segments.segments(i).name(3:5));
+         end
+         save(fullfile(config.root,"plots", 'parametersAllDrivers.mat'), 'parameters_out');
+    case "PARAMETER_VALIDATION_FROM_FILE"
+        modelID = "eldm";
+        modelMode = "kinematic";
+        segment = segments.segments(1).segment;
+        [~, segment_m, indexes] = prepareInputForPlanner(segment);
+        
+        globalStartIndex = 2; % minimum is 2, otherwise it fails!
+        globalStopIndex = size(segment_m,1);
+        
+        corFine = corridorGeneration(0.5);
+        refFine = referenceGeneration(0.5);
+        % read-in parameters 
+        data = load("C:\database\LDM_PARAMS\parametersAllDrivers.mat");
+        k=1;
+        for j=1:length(data.parameters_out)
+            if (data.parameters_out(j).drID ~= 8 || data.parameters_out(j).drID ~= 9)
+                parameterRawData(:,k) = functional_driverModelLearning(data.parameters_out(j).U, data.parameters_out(j).dY ,8);
+                k = k+1;
+            end
+        end
+        % clustering
+        K = 3;
+        rng(1); %doc: https://www.mathworks.com/help/matlab/math/controlling-random-number-generation.html
+        normalizedParams = parameterRawData(1:18,:)/max(max(abs(parameterRawData(1:18,:))));
+        normalizedParams = [normalizedParams; parameterRawData(19,:)/max(abs(parameterRawData(19,:)))];
+
+        [driverClusters,~,sumD] = kmeans(normalizedParams',K, 'Distance','sqeuclidean', 'MaxIter', 1000, 'Replicates',10); 
+        f = figure(5);
+        set(f,'defaulttextInterpreter','latex') ;
+        set(f, 'defaultAxesTickLabelInterpreter','latex');  
+        set(f, 'defaultLegendInterpreter','latex');
+        set(f, "Position", [100,100,505,310]);
+        silhouette(normalizedParams',driverClusters);
+        s = silhouette(normalizedParams',driverClusters);
+        xline(mean(s),'LineWidth',2); grid on;
+        title(strcat("Clustering performance K = ", {' '}, num2str(K),", Manhatten norm"));
+        legend("Elements", "Mean");
+        set(gca,'FontSize', 14);
+        
+        %% batch parameter simulation
+        clusterIDs = unique(driverClusters);
+        f = figure();
+        set(f,'defaulttextInterpreter','latex') ;
+        set(f, 'defaultAxesTickLabelInterpreter','latex');  
+        set(f, 'defaultLegendInterpreter','latex');
+        f.Position = [100 100 650 850];
+
+        for k=1:length(clusterIDs)
+            subplot(length(clusterIDs),1,k);
+            noDriversInCluster = 0;
+            P_averaged = [];
+            numberOfDrivers = size(parameterRawData,2);            
+            for j=1:numberOfDrivers
+                drID = data.parameters_out(j).drID;
+                driverParam = parameterRawData(:,j);
+                if (driverClusters(drID) == clusterIDs(k))
+                   noDriversInCluster = noDriversInCluster + 1;
+                   parameters.P_ELDM = reshape(driverParam, 3,7);
+                   if (isempty(P_averaged))
+                       P_averaged = parameters.P_ELDM;
+                   else
+                       P_averaged = 1/noDriversInCluster * ((noDriversInCluster-1)*P_averaged + parameters.P_ELDM);
+                   end
+                   [path, Udrivers{j}, dYdrivers{j}, plannedPath, ~, vehicleStateMemory] = pathGeneration();
+                   offsetPath = offsetCalculation(corFine, path);
+                   plot(path(:,1), offsetPath, 'DisplayName', strcat("Dr",num2str(drID))); hold on; grid on;
+                   title(strcat('Cluster',{' '}, num2str(clusterIDs(k))));
+                end
+            end
+            parameters.P_ELDM = P_averaged;
+            disp(P_averaged);
+           [path, Uarray{k}, dYarray{k}, plannedPath] = pathGeneration();
+           offsetPath = offsetCalculation(corFine, path);
+           plot(path(:,1), offsetPath, 'DisplayName', 'Averaged', 'LineWidth', 2, 'color', 'k');
+           xlabel('UTF-X(m)'); ylabel('offset(m)');
+           dataSaveForVisualization(config, Uarray{k}, dYarray{k}, path, num2str(clusterIDs(k)), segment_m, indexes,offsetPath, plannedPath, P_averaged);
+           yline(0,"HandleVisibility","off");
+    
+            legend("Orientation","horizontal","Location","southoutside", "NumColumns",5);
+            ylim([-1.25, 1.25]);
+            xlim([min(path(~isnan(path(:,1)),1)), max(path(~isnan(path(:,1)),1))]);
+            yticks([-1,-0.5,0,0.5,1]);
+            set(gca,'TickLabelInterpreter','latex');
+            set(gca,'FontSize', 12);
+        end
+end
+
+f = figure(3);
+set(f,'defaulttextInterpreter','latex') ;
+set(f, 'defaultAxesTickLabelInterpreter','latex');  
+set(f, 'defaultLegendInterpreter','latex');
+f.Position = [100 100 505 310];
+ulims = linspace(-5,5, 100);
+plot(Uarray{1}(1,:),dYarray{1}(1,:), 'bo', 'HandleVisibility','off'); hold on;
+plot(Uarray{1}(4,:),dYarray{1}(1,:), 'bo', 'HandleVisibility','off');
+plot(Uarray{2}(1,:),dYarray{2}(1,:), 'rx', 'HandleVisibility','off');
+plot(Uarray{2}(4,:),dYarray{2}(1,:), 'rx', 'HandleVisibility','off');
+plot(Uarray{3}(1,:),dYarray{3}(1,:), 'g*', 'HandleVisibility','off');
+plot(Uarray{3}(4,:),dYarray{3}(1,:), 'g*', 'MarkerSize', 4, 'HandleVisibility','off');
+
+% fit curve
+cLeft = polyfit(Uarray{1}(1,Uarray{1}(1,:)>0.25),dYarray{1}(1,Uarray{1}(1,:)>0.25),1);
+cRight = polyfit(Uarray{1}(4,Uarray{1}(4,:)<0.25),dYarray{1}(1,Uarray{1}(4,:)<0.25),1);
+plot(ulims(51:100),cLeft(2)+cLeft(1)*ulims(51:100), 'LineWidth',2, 'color', 'b'); plot(ulims(1:50),cRight(2)+cRight(1)*ulims(1:50), 'LineWidth',2, 'color', 'b', 'HandleVisibility','off');
+cLeft = polyfit(Uarray{2}(1,Uarray{2}(1,:)>0.25),dYarray{2}(1,Uarray{1}(1,:)>0.25),1);
+cRight = polyfit(Uarray{2}(4,Uarray{2}(4,:)<0.25),dYarray{2}(1,Uarray{1}(4,:)<0.25),1);
+plot(ulims(51:100),cLeft(2)+cLeft(1)*ulims(51:100), 'LineWidth',2, 'color', 'r'); plot(ulims(1:50),cRight(2)+cRight(1)*ulims(1:50), 'LineWidth',2, 'color', 'r', 'HandleVisibility','off');
+cLeft = polyfit(Uarray{3}(1,Uarray{3}(1,:)>0.25),dYarray{3}(1,Uarray{1}(1,:)>0.25),1);
+cRight = polyfit(Uarray{3}(4,Uarray{3}(4,:)<0.25),dYarray{3}(1,Uarray{1}(4,:)<0.25),1);
+plot(ulims(51:100),cLeft(2)+cLeft(1)*ulims(51:100), 'LineWidth',2, 'color', 'g'); plot(ulims(1:50),cRight(2)+cRight(1)*ulims(1:50), 'LineWidth',2, 'color', 'g', 'HandleVisibility','off');
+grid on;
+legend("Cluster 1", "Cluster 2", "Cluster 3", 'Orientation','horizontal','Location','north');
+title("Correlation plot of clusters");
+ylim([-1.25,1.25]);
+xlim([-5,5]);
+xlabel("Noramlized curvature to 0.001 (1/m)");
+ylabel("Lane offset (m)");
+set(gca,'FontSize',14);
 
 
     %% loop simulation option for different number of node points
@@ -116,252 +264,16 @@ global segment_m indexes globalStartIndex globalStopIndex vehicleState parameter
     end
     
     disp(losses);
-    disp(times);
+    disp(times);    
 
-    %% batch parameter simulation
-    modelID = "eldm";
-    modelMode = "dynamic";
-    parameters.P_npDistances = [0.15, 0.2, 0.25];
-    paramFiles = dir(fullfile(config.root,'parameters*.mat'));
-    averageParamFiles = dir(fullfile(config.root,'averaged*.mat'));
-    driverClusters = [2 2 3 2 2 ...
-        2 1 1 2 1 ...
-        1 1 1 1 1 ...
-        1 2 3 2];
-    clusterIDs = unique(driverClusters);
-    figure(); 
-    for k=1:length(clusterIDs)
-        subplot(length(clusterIDs),1,k);
-        noDriversInCluster = 0;
-        P_averaged = [];
-        for fileID = 1:length(paramFiles)
-            parameterRawData = load(fullfile(paramFiles(fileID).folder,paramFiles(fileID).name));
-            if (isfield(parameterRawData, 'parameters'))
-                parameterRawData = parameterRawData.parameters;
-                fn = fieldnames(parameterRawData);
-                numberOfDrivers = length(fn);
-            else
-                fn = fieldnames(parameterRawData);
-                parameterRawData = parameterRawData.(fn{1});
-                numberOfDrivers = size(parameterRawData,1);
-            end            
-            for j=1:numberOfDrivers
-                if (length(fn) > 1)
-                    drID = fn{j};
-                    drID = str2num(drID(3:5));
-                    driverParam = parameterRawData.(fn{j});
-                else
-                    drID = j;
-                    driverParam = parameterRawData(j,:);
-                    driverParam(end+1:end+2) = driverParam(end);
-                end
-                if (driverClusters(drID) == clusterIDs(k))
-                   noDriversInCluster = noDriversInCluster + 1;
-                   parameters.P_ELDM = reshape(driverParam, 3,7);
-                   if (isempty(P_averaged))
-                       P_averaged = parameters.P_ELDM;
-                   else
-                       P_averaged = 1/noDriversInCluster * ((noDriversInCluster-1)*P_averaged + parameters.P_ELDM);
-                   end
-                   [path, ~, ~, ~, ~, vehicleStateMemory] = pathGeneration();
-                   modelMode = "kinematic";
-                   [pathKinematic, ~, ~, ~, ~, vehicleStateMemoryKinematic] = pathGeneration();
-                   offsetPath = offsetCalculation(corFine, path);
-                   plot(path(:,1), offsetPath, 'DisplayName', strcat("Dr",num2str(drID))); hold on; grid on;
-                   title(strcat('Cluster',{' '}, num2str(clusterIDs(k))));
-                end
-            end
-        end
-        parameters.P_ELDM = P_averaged;
-        disp(P_averaged);
-       [path, U, dY, plannedPath] = pathGeneration();
-       offsetPath = offsetCalculation(corFine, path);
-       plot(path(:,1), offsetPath, 'DisplayName', 'Averaged', 'LineWidth', 2, 'color', 'k');
-       xlabel('UTF-X(m)'); ylabel('offset(m)');
-       dataSaveForVisualization(config, U, dY, path, num2str(clusterIDs(k)), segment_m, indexes,offsetPath, plannedPath, P_averaged);
-
-        legend;
-        ylim([-1.5, 1.5]);
-    end
-    
-    %% optimization based solution
-%     options = optimset('PlotFcns',@optimplotfval);
-%     P_optimized = fminsearch(@optimizationLoss, parameters.P_LDM, options);
-%     parameters.P_LDM = P_optimized;
-%     path = pathGeneration();
-%     offsetPath = offsetCalculation(refFine, path);
-%     [orientation, curvature] = calcPathGeometry(path);
-%     curves = abs(movmean(curvature,200)) > 2.5e-4;
-%     
-%     % loss calculation of resulting path
-%     indeces = (curves)&(~isnan(offsetPath'));
-%     loss = median(abs(offsetPath(indeces==1)))
-
-    %% DNN based solution - OPEN-LOOP
-    % Simulating whole route to generate target and input vectors
-    modelID = "groundTruth";
-
-    parameters.P_npDistances = [0, 29, 96]/250;
-    U = []; T=[];
-    % Generating train data
-    for i=1:size(segments.segments,2)
-        segment = segments.segments(i).segment;
-        [~, segment_m, indexes] = prepareInputForPlanner(segment);
-
-        globalStartIndex = 2;
-        globalStopIndex = size(segment_m,1);
-    
-        [~, Umem, Tmem] = pathGeneration();
-        % modification to get rid of straight line effects
-        for j=1:size(Umem,2)
-            if (max(abs(Umem(:,j))) <= 0.5)
-                straightSection(j) = 1;
-            else
-                straightSection(j) = 0;
-            end
-        end
-        U = [U Umem(:,straightSection==0)];
-        T = [T Tmem(:,straightSection==0)];
-        clear straightSection
-    end
-    Ic = max(abs(U(1:3,:))) <= 0.5;
-    U = U(:,Ic==0);
-    T = T(:,Ic==0);
-    % deleting outliers
-    Ic = max(abs(T)) > 1.25;
-    U = U(:,Ic==0);
-    T = T(:,Ic==0);
-    % validation data
-    DataV = floor(size(U,2)*0.25);
-    Uv = U(:,1:DataV);
-    Tv = T(:,1:DataV);
-    U = U(:,DataV+1:end);
-    T = T(:,DataV+1:end);
-
-
-    numEpochs = 48000;
-    iteration = 0;
-    numBatch = 10;
-    dataSize = size(U,2);
-    dataSizeValidation = size(Uv,2);
-    batchSize = floor(dataSize/numBatch);
-    batchSizeValidation = floor(dataSizeValidation/numBatch);
-    numIterPerBatch = 5;
-    iterSize = floor(batchSize/numIterPerBatch);
-    iterSizeValidation = floor(batchSizeValidation/numIterPerBatch);
-    net = generateNetwork(3);
-    averageGrad = []; averageSqGrad = [];
-    %learnRate = 0.01;
-    %gradDecay = 0.75;
-
-    for epoch = 1:numEpochs
-        for batch=1:numBatch
-            iteration = iteration + 1;
-            for iter=1:numIterPerBatch
-                % Prepare mini batch - one scenario simulated only
-                % for this, we know the target and the inputs already
-                iterStartIdx = (batch-1)*batchSize+(iter-1)*iterSize+1;
-                iterStopIdx = iterStartIdx + iterSize;
-                dlU(1:3,(iter-1)*iterSize+1:(iter-1)*iterSize+1+iterSize,iter) = U(1:3,iterStartIdx:iterStopIdx);
-                dlT(1:3,(iter-1)*iterSize+1:(iter-1)*iterSize+1+iterSize,iter) = T(1:3,iterStartIdx:iterStopIdx);
-
-            end
-            [loss,gradients] = dlfeval(@modelLoss,net, dlU, dlT);
-            clear dlU dlT
-            rmsInEpoch(batch,1) = nrmsLoss;
-            
-            % validation loss
-            
-%             e = extractdata(T)-extractdata(V);
-%             f = reshape(e,3,size(e,3)*size(e,2));
-%             validationLossInEpoch(batch) = norm(f);
-            
-            %gradients = dlgradient(loss,net.Learnables);
-            % Update the network parameters using the Adam optimizer.
-            [net,averageGrad,averageSqGrad] = adamupdate(net,gradients, ...
-                averageGrad,averageSqGrad,iteration);
-        end
-
-        for batch=1:numBatch
-            for iter=1:numIterPerBatch
-                % Prepare mini batch - one scenario simulated only
-                % for this, we know the target and the inputs already
-                iterStartIdx = (batch-1)*batchSizeValidation+(iter-1)*iterSizeValidation+1;
-                iterStopIdx = iterStartIdx + iterSizeValidation;
-                dlUv(1:3,(iter-1)*iterSizeValidation+1:(iter-1)*iterSizeValidation+1+iterSizeValidation, iter) = Uv(1:3,iterStartIdx:iterStopIdx);
-                dlTv(1:3,(iter-1)*iterSizeValidation+1:(iter-1)*iterSizeValidation+1+iterSizeValidation,iter) = Tv(1:3,iterStartIdx:iterStopIdx);
-            end
-            dlU = dlarray(dlUv,"CTB");
-            dlT = dlarray(dlTv, "CTB");
-            dlY = forward(net,dlU);
-            dnnlossValidation = mse(dlY,dlT);
-            clear dlUv dlTv
-            rmsInEpochValidation(batch,1) = extractdata(dnnlossValidation)^0.5;
-        end
-
-        meanRmsForDataSet(epoch) = mean(rmsInEpoch(:,1));   
-        meanRmsForDataSetValidation(epoch) = mean(rmsInEpochValidation(:,1));  
-      
-        subplot(2,1,1);
-        plot(meanRmsForDataSet, 'Marker', 'o', 'color', 'k', 'DisplayName', 'train');
-        hold on;
-        plot(meanRmsForDataSetValidation, 'Marker', 'x', 'color', 'b', 'DisplayName','validation');
-        hold off;
-        legend;
-        
-        grid on;
-        title(strcat('Current mean loss:', {' '}, num2str(mean(rmsInEpoch))));
-
-        
-        if(rem(epoch,100) == 0)
-            modelID = "dnn";
-            globalStartIndex = 2;
-            globalStopIndex = size(segment_m,1);
-            vehicleState = initVehicleState(segment_m, indexes, globalStartIndex);
-            [~, Um, Tm] = pathGeneration();
-            subplot(2,1,2);
-            plot(U(1,:), T(1,:),'bo');
-            hold on;
-            plot(Um(1,:), Tm(1,:),'rx');
-            hold off;
-            grid on;
-        end
-
-        pause(0.1);
-    end
-
-    
-
-end
-
-function f = objfunc(x0)
-global globalStartIndex globalStopIndex refFine
-
-[path, U, dY, ~, intentionPath] = pathGeneration();
-
-
-end
-
-function dlV = generateValidationData(batch, dlV)
-global modelID segment_m indexes vehicleState globalStartIndex
-    % Init vehicle state
-    vehicleState = initVehicleState(segment_m, indexes, globalStartIndex);
-    modelID = "dnn";
-    [~, ~, V] = pathGeneration();
-    if (isempty(dlV))
-        clear dlV;
-        dlV(1:3,1:size(V,2),batch) = dlarray(V, "CTB");
-    else
-        dlV(1:3,1:size(V,2),batch) = dlarray(V, "CTB");
-    end
 end
 
 function dataSaveForVisualization(config, GT_U, GT_Y, path, token, segment_m, indexes, offsetPath, plannedPath, Poptim)
     replan_array = ones(size(path,1),1);
     segment.X_abs = path(:,1);
     segment.Y_abs = path(:,2);
-    segment.q_T0 = segment_m(:,indexes.q_T0);
-    segment.c2 = segment_m(:,indexes.c2);
+    segment.q_T0 = segment_m(:,indexes.Relative_time);
+    segment.c2 = segment_m(:,indexes.LaneCurvature);
     x = linspace(1,size(GT_U,2),size(GT_U,2));
     xFine = linspace(1,size(GT_U,2),size(path,1));
     trajFull = plannedPath;
@@ -376,69 +288,6 @@ function dataSaveForVisualization(config, GT_U, GT_Y, path, token, segment_m, in
     end
     
     save(fullfile(config.root, strcat(token,'forVisualization.mat')));
-end
-
-function [dlU,dlT] = generateDataForNetwork(batch, dlU, dlT)
-    global modelID vehicleState segment_m indexes globalStartIndex
-    modelID = "groundTruth";
-    vehicleState = initVehicleState(segment_m, indexes, globalStartIndex);
-    [~, U, T] = pathGeneration();
-    if (isempty(dlU))
-        clear dlU dlT
-        dlU(1:3,1:size(U,2),batch) = dlarray(U, "CTB");
-        dlT(1:3,1:size(U,2),batch) = dlarray(T, "CTB");
-    else
-        dlU(1:3,1:size(U,2),batch) = dlarray(U, "CTB");
-        dlT(1:3,1:size(U,2),batch) = dlarray(T, "CTB");
-    end
-   
-    modelID = "dnn";
-end
-
-function net = generateNetwork(numChannels)
-    % generating using dlnetwork
-    layers = [
-    sequenceInputLayer(numChannels, 'Name', 'Input')
-    fullyConnectedLayer(64, 'Name', 'FC1')
-    reluLayer('Name','ReLu1')
-    fullyConnectedLayer(32, 'Name', 'FC2')
-    reluLayer('Name','ReLu2')
-    fullyConnectedLayer(numChannels, 'Name', 'Output')];
-
-
-    lgraph = layerGraph(layers);
-
-    net = dlnetwork(lgraph);
-end
-
-function loss = optimizationLoss(P)
-    global parameters segment_m indexes vehicleState globalStartIndex refFine
-    parameters.P_curvepolicy = P;
-    % Init vehicle state
-    vehicleState = initVehicleState(segment_m, indexes, globalStartIndex);
-    try
-        path = pathGeneration();
-    
-        offsetPath = offsetCalculation(refFine, path);
-        [~, curvature] = calcPathGeometry(path);
-        curves = abs(movmean(curvature,200)) > 2.5e-4;
-
-        % loss calculation of resulting path
-        indeces = (~isnan(offsetPath'));
-        loss = median(abs(offsetPath(indeces==1)));
-    catch
-        loss = 1000;
-    end
-end
-
-function [dnnloss, gradients] = modelLoss(net, U, T) 
-    global nrmsLoss
-    u = dlarray(U,"CTB");
-    dlY = forward(net,u);
-    t = dlarray(T,"CTB");
-    dnnloss = mse(dlY,t);
-    nrmsLoss = extractdata(dnnloss)^0.5; %/(mean(mean(mean(extractdata(abs(dlY))))));
-    gradients = dlgradient(dnnloss,net.Learnables);
 end
 
 function offset = offsetCalculation(corFine, path)
@@ -515,7 +364,7 @@ function [path, U, dY, plannedPath, intentionPath, vehicleStateMemory] = pathGen
     global segment_m indexes globalStartIndex globalStopIndex vehicleState parameters metadata net dt dts modelMode x_k1
     % Entire model is calculated in the global frame!
     vehicleState = initVehicleState(segment_m, indexes, globalStartIndex, modelMode);
-    replan = 10;
+    replan = true;
     scenario = []; % initializing the scenario
     path(1,1) = vehicleState.X;
     path(1,2) = vehicleState.Y;
@@ -527,7 +376,7 @@ function [path, U, dY, plannedPath, intentionPath, vehicleStateMemory] = pathGen
     for i=globalStartIndex:globalStopIndex
         
         % calculate time step
-        dT = segment_m(i, indexes.q_T0) - segment_m(i-1, indexes.q_T0);
+        dT = segment_m(i, indexes.Relative_time) - segment_m(i-1, indexes.Relative_time);
         
         % if there is a valid scenario ongoing, let's check, if there
         % is enough remaining part of it!
@@ -582,7 +431,7 @@ function [path, U, dY, plannedPath, intentionPath, vehicleStateMemory] = pathGen
                 vehicleState = loadModel(vehicleState);
                 vehicleState = speedController(vehicleState);
             end
-
+ 
             vehicleState.steeringAngle = controller(posteriorPath, vehicleState); 
             % vehicle model
             vehicleState = vehicleModel(vehicleState, dT, modelMode, parameters.vehicleParameters);
@@ -606,10 +455,10 @@ function [path, U, dY, plannedPath, intentionPath, vehicleStateMemory] = pathGen
             replan = 1;
             metadata.pathValidity(i) = 0;
             replanCounter = 0;
+            priorPath = path(end,:);
+            posteriorPath = priorPath;
         end
-        path(i,1) = vehicleState.X;
-        path(i,2) = vehicleState.Y;
-        %U = [U u]; dY = [dY dy];
+        path = [path; [vehicleState.X vehicleState.Y]];
         intentionPath = [intentionPath; priorPath(1,:)];
         plannedPath = [plannedPath; posteriorPath(1,:)];
         vehicleStateMemory{i} = vehicleState;
@@ -631,11 +480,11 @@ function [path, U, dY, plannedPath, intentionPath, vehicleStateMemory] = pathGen
     coefficients_k1 = [];
     coefficients = coefficients_k1;
     displacementVector = zeros(2,1);
-    x_k1 = zeros(5,1); x_k1(3) = segment_m(1,indexes.velocityX);
+    x_k1 = zeros(5,1); x_k1(3) = segment_m(1,indexes.VelocityX);
 
     for i=globalStartIndex:globalStopIndex
         % calculate time step
-        dT = segment_m(i, indexes.q_T0) - segment_m(i-1, indexes.q_T0);
+        dT = segment_m(i, indexes.Relative_time) - segment_m(i-1, indexes.Relative_time);
         
         % if there is a valid scenario ongoing, let's check, if there
         % is enough remaining part of it!
@@ -664,7 +513,7 @@ function [path, U, dY, plannedPath, intentionPath, vehicleStateMemory] = pathGen
                 deltaPose = [scenario(1,indexes.X_abs)-vehicleState.X, ...
                     scenario(1, indexes.Y_abs)-vehicleState.Y, ...
                     scenario(1,indexes.theta_calc)-vehicleState.theta];
-                [c0, c1] = transformVideoData(scenario(1,indexes.c0),scenario(1,indexes.c1), ...
+                [c0, c1] = transformVideoData(scenario(1,indexes.c0),scenario(1,indexes.LaneOrientation), ...
                     [scenario(1,indexes.X_abs), scenario(1,indexes.Y_abs), scenario(1,indexes.theta_calc)], ...
                     [vehicleState.X, vehicleState.Y, vehicleState.theta]);
                 
@@ -803,166 +652,17 @@ function [c, npLocal] = transformCoefficients(X,Y,theta, origo, pose)
     end
 end
 
-% function vehicleState = vehicleModel(vehicleState, dT, mode)
-% if(mode == "kinematic")    
-%     % kinematic bicycle model
-%     % parameters
-%     p_wheelBase = 2.7; % meter
-%     % calculating yaw-rate based on steering angle
-%     vehicleState.yawRate = tan(vehicleState.steeringAngle)/p_wheelBase * vehicleState.vx;
-%     vehicleState.theta = vehicleState.theta + dT*vehicleState.yawRate;
-%     % displacement
-%     dX = vehicleState.vx*dT*cos(vehicleState.theta);
-%     dY = vehicleState.vx*dT*sin(vehicleState.theta);
-%     % new vehicle position
-%     vehicleState.X = vehicleState.X+dX;
-%     vehicleState.Y = vehicleState.Y+dY;
-%     vehicleState.vy = 0;
-%     vehicleState.ax = 0;
-%     vehicleState.ay = vehicleState.vx*vehicleState.yawRate;
-%     
-% elseif (mode == "dynamic")    
-%     % dynamic bicycle model
-%     % only for high speeds
-%     % inputs:
-%     % - vehicleState.steeringAngle
-%     % - vehicleState.M_av/M_ah - breaking forces
-%     % - vehicleState.M_bv/M_bh - breaking forces
-%     % parameters:
-%     % r: radius of wheels in [m]
-%     % c_alfav/h: lateral slip coefficient [N/rad]
-%     % c_sv/h: longitudinal slip coefficient [N/%]
-%     % c_w: wind coefficient
-%     % rho_air: air density
-%     % A: preface
-%     % J: rotational intertia of the vehicle
-%     % m: mass of the vehicle
-%     % lv/lh: COG position from front and rear axle
-%     % Jwheel: rotiational interatia of the wheels
-%     r = 0.309725; c_alfaf = 76500; c_sf = 250; c_alfar = 76500; c_sr = 250;
-%     m = 1519;
-%     Jwheel = 250; J = 1818;
-%     A = 1.5; c_w = 0; rho_air = 1; lf = 1; lr = 1.5; 
-%     
-% %    vehicleState.s_v = -(vehicleState.v_vx_v - r*vehicleState.drho_v)/(max(abs(vehicleState.v_vx_v), r*vehicleState.drho_v)); % longitudinal slip front, wheel coordinate frame
-%     vehicleState.s_f = -(vehicleState.v_fx_v - r*vehicleState.drho_f)/(r*vehicleState.drho_f); % longitudinal slip front, wheel coordinate frame
-% 
-% %    vehicleState.alfa_v = -vehicleState.v_vy_v /(abs(r*vehicleState.drho_v)); % lateral slip front, wheel coordinate frame
-%     vehicleState.alfa_f = -vehicleState.v_fy_v /(r*vehicleState.drho_f); % lateral slip front, wheel coordinate frame
-% 
-% %    vehicleState.s_h = -(vehicleState.v_hx_v - r*vehicleState.drho_h)/(max(abs(vehicleState.v_hx_v), r*vehicleState.drho_h)); % longitudinal slip front, wheel coordinate frame
-%     vehicleState.s_r= -(vehicleState.v_rx_v - r*vehicleState.drho_r)/(r*vehicleState.drho_r); % longitudinal slip front, wheel coordinate frame
-% 
-% %    vehicleState.alfa_h = -vehicleState.v_hy_v /(abs(r*vehicleState.drho_h)); % lateral slip front, wheel coordinate frame
-%     vehicleState.alfa_r = -vehicleState.v_ry_v /(r*vehicleState.drho_r); % lateral slip front, wheel coordinate frame
-% 
-%     vehicleState.F_fx_v = c_sf*vehicleState.s_f; % longitudinal tyre force front, wheel coordinate frame
-%     vehicleState.F_fy_v = c_alfaf*vehicleState.alfa_f; % lateral tyre force front, wheel coordinate frame
-%     vehicleState.F_fx = cos(vehicleState.steeringAngle)*vehicleState.F_fx_v - sin(vehicleState.steeringAngle)*vehicleState.F_fy_v; % longitudinal tyre force front, vehicle frame
-%     vehicleState.F_fy = sin(vehicleState.steeringAngle)*vehicleState.F_fx_v + cos(vehicleState.steeringAngle)*vehicleState.F_fy_v; % lateral tyre force front, vehicle frame
-%     vehicleState.F_rx = c_sr*vehicleState.s_r; % longitudinal tyre force, rear wheel, vehicle coordinate frame == wheel coordinate frame
-%     vehicleState.F_ry = c_alfar*vehicleState.alfa_r; % lateral tyre force, rear wheel, vehicle coordinate frame == wheel coordinate frame
-%     vehicleState.F_wx = 0.5*c_w*rho_air*A*vehicleState.v_fx^2;
-%     vehicleState.F_wy = 0.5*c_w*rho_air*A*vehicleState.v_fy^2;
-%     
-%     % COG quantities    
-%     vehicleState.a_x = 1/m*(vehicleState.F_fx + vehicleState.F_rx - vehicleState.F_wx);
-%     vehicleState.a_y = 1/m*(vehicleState.F_fy + vehicleState.F_ry - vehicleState.F_wy);
-%     
-%     vehicleState.v_x = vehicleState.v_x + vehicleState.a_x*dT;
-%     vehicleState.v_y = vehicleState.v_y + vehicleState.a_y*dT;
-%     
-%     vehicleState.eps_sigma = 1/J*(lf*vehicleState.F_fy - lr*vehicleState.F_ry);
-%     vehicleState.yawRate = vehicleState.yawRate + dT*vehicleState.eps_sigma;
-%     
-%     % Baselink quantities
-%     vehicleState.ax = vehicleState.a_x;
-%     vehicleState.vx = vehicleState.v_x;
-%     vehicleState.ay = vehicleState.yawRate*vehicleState.vx;
-%     vehicleState.vy = 0;
-%     
-%     % transforming to front and rear wheel
-%     vehicleState.v_fx = vehicleState.v_x;
-%     vehicleState.v_fy = vehicleState.v_y + vehicleState.yawRate*lf;
-%     vehicleState.v_rx = vehicleState.v_x;
-%     vehicleState.v_ry = vehicleState.v_y - vehicleState.yawRate*lr;
-%     
-%     vehicleState.v_fx_v = cos(vehicleState.steeringAngle)*vehicleState.v_fx + sin(vehicleState.steeringAngle)*vehicleState.v_fy;
-%     vehicleState.v_fy_v = -sin(vehicleState.steeringAngle)*vehicleState.v_fx + cos(vehicleState.steeringAngle)*vehicleState.v_fy;
-%     vehicleState.v_rx_v = vehicleState.v_rx;
-%     vehicleState.v_ry_v = vehicleState.v_ry;
-%     
-%     vehicleState.ddrho_f = 1/Jwheel * (vehicleState.M_af - vehicleState.M_bf)*sign(vehicleState.drho_f) - r*vehicleState.F_fx_v;
-%     vehicleState.ddrho_r = 1/Jwheel * (vehicleState.M_ar - vehicleState.M_br)*sign(vehicleState.drho_r) - r*vehicleState.F_rx;
-%     
-%     vehicleState.drho_f = vehicleState.drho_f + vehicleState.ddrho_f*dT;
-%     vehicleState.drho_r = vehicleState.drho_r + vehicleState.ddrho_r*dT;
-%     
-%     % absolute frame quantities
-%     vehicleState.theta = vehicleState.theta + dT*vehicleState.yawRate;
-%     % displacement
-%     dX = vehicleState.v_rx*dT*cos(vehicleState.theta)-sin(vehicleState.theta)*vehicleState.v_ry*dT;
-%     dY = vehicleState.v_rx*dT*sin(vehicleState.theta)+cos(vehicleState.theta)*vehicleState.v_ry*dT;
-%     % new vehicle position
-%     vehicleState.X = vehicleState.X+dX;
-%     vehicleState.Y = vehicleState.Y+dY;
-%     
-%     vehicleState.v = (vehicleState.v_x^2 + vehicleState.v_y^2)^0.5;  
-%     
-% elseif (mode == "dynamicSimplified")
-%     r = 0.309725; c_alfaf = 76500; c_sf = 250; c_alfar = 76500; c_sr = 250;
-%     m = 1519;
-%     Jwheel = 250; J = 1818;
-%     lf = 1; lr = 1.5;     
-%     
-%     df = vehicleState.steeringAngle;
-%     vehicleState.F_fx = cos(df)*(-c_sf*(cos(df)*vehicleState.v_x+sin(df)*vehicleState.v_y+sin(df)*vehicleState.yawRate*lf-r*vehicleState.drho_f)/(r*vehicleState.drho_f))+ ...
-%         sin(df)*c_alfaf*(-sin(df)*vehicleState.v_x+cos(df)*vehicleState.v_y+cos(df)*vehicleState.yawRate*lf)/(r*vehicleState.drho_f);
-%     vehicleState.F_fy = -sin(df)*c_sf*(cos(df)*vehicleState.v_x+sin(df)*vehicleState.v_y+sin(df)*vehicleState.yawRate*lf-r*vehicleState.drho_f)/(r*vehicleState.drho_f) - ...
-%         cos(df)*c_alfaf*(-sin(df)*vehicleState.v_x+cos(df)*vehicleState.v_y+cos(df)*vehicleState.yawRate*lf)/(r*vehicleState.drho_f);
-%     vehicleState.F_rx = c_sr*(-(vehicleState.v_x-r*vehicleState.drho_r)/(r*vehicleState.drho_f));
-%     vehicleState.F_ry = c_alfar*(-(vehicleState.v_y-vehicleState.yawRate*lr)/(r*vehicleState.drho_r));
-%     vehicleState.a_x = 1/m*(vehicleState.F_fx + vehicleState.F_rx);
-%     vehicleState.a_y = 1/m*(vehicleState.F_fy + vehicleState.F_ry);
-%     vehicleState.v_x = vehicleState.v_x + vehicleState.a_x*dT;
-%     vehicleState.v_y = vehicleState.v_y + vehicleState.a_y*dT;
-%     vehicleState.yawRate = vehicleState.yawRate + dT/J*lf*vehicleState.F_fy - dT*lr/J*vehicleState.F_ry;
-%     vehicleState.drho_f = vehicleState.drho_f+dT*r*c_sf*(cos(df)*vehicleState.v_x+sin(df)*vehicleState.v_y+sin(df)*vehicleState.yawRate*lf-r*vehicleState.drho_f)/(r*vehicleState.drho_f);
-%     vehicleState.drho_r = vehicleState.drho_r+r*dT*c_sr*(vehicleState.vx-r*vehicleState.drho_r)/(r*vehicleState.drho_r);
-%     
-%     vehicleState.theta = vehicleState.theta + vehicleState.yawRate*dT;
-%     % displacement
-%     v_hx = vehicleState.v_x;
-%     v_hy = vehicleState.v_y - lr*vehicleState.yawRate;
-%     dX = v_hx*dT*cos(vehicleState.theta)-sin(vehicleState.theta)*v_hy*dT;
-%     dY = v_hx*dT*sin(vehicleState.theta)+cos(vehicleState.theta)*v_hy*dT;
-%     % new vehicle position
-%     vehicleState.X = vehicleState.X+dX;
-%     vehicleState.Y = vehicleState.Y+dY;
-%     
-% end
-% end
-
-function vehicleStateCheck = checkModelEquality(vehicleState,vehicleStateCheck)
-    vehicleStateCheck.F_fx_err = vehicleStateCheck.F_fx - vehicleState.F_fx;
-    vehicleStateCheck.F_fy_err = vehicleStateCheck.F_fy - vehicleState.F_fy;
-    vehicleStateCheck.F_rx_err = vehicleStateCheck.F_rx - vehicleState.F_rx;
-    vehicleStateCheck.F_ry_err = vehicleStateCheck.F_ry - vehicleState.F_ry;
-    vehicleStateCheck.drho_f_err = vehicleStateCheck.drho_f - vehicleState.drho_f;
-    vehicleStateCheck.drho_r_err = vehicleStateCheck.drho_r - vehicleState.drho_r;
-end
-
 function vehicleState = initVehicleState(segment_m, indexes, index, mode)
 if (mode=="kinematic")
     vehicleState.X = segment_m(index, indexes.X_abs);
     vehicleState.Y = segment_m(index, indexes.Y_abs);
     vehicleState.theta = segment_m(index, indexes.theta_calc);
-    vehicleState.yawRate = segment_m(index, indexes.yawRate);
-    vehicleState.vx = segment_m(index, indexes.velocityX);
+    vehicleState.yawRate = segment_m(index, indexes.YawRate);
+    vehicleState.vx = segment_m(index, indexes.VelocityX);
     vehicleState.vy = 0;
     vehicleState.ax = 0;
     vehicleState.ay = vehicleState.vx*vehicleState.yawRate;
-    vehicleState.t0 = segment_m(index, indexes.q_T0);    
+    vehicleState.t0 = segment_m(index, indexes.Relative_time);    
     vehicleState.steeringAngle = 0;
     vehicleState.time = 0;
 elseif (mode =="dynamic")
@@ -971,10 +671,10 @@ elseif (mode =="dynamic")
     vehicleState.X = segment_m(index, indexes.X_abs);
     vehicleState.Y = segment_m(index, indexes.Y_abs);
     vehicleState.theta = segment_m(index, indexes.theta_calc);
-    vehicleState.v_x = segment_m(index, indexes.velocityX);
+    vehicleState.v_x = segment_m(index, indexes.VelocityX);
     vehicleState.v_y = 0;
-    vehicleState.t0 = segment_m(index, indexes.q_T0);
-    vehicleState.yawRate = segment_m(index, indexes.yawRate);
+    vehicleState.t0 = segment_m(index, indexes.Relative_time);
+    vehicleState.yawRate = segment_m(index, indexes.YawRate);
     vehicleState.steeringAngle = 0;
     vehicleState.v_fx = vehicleState.v_x;
     vehicleState.v_fy = vehicleState.v_y + vehicleState.yawRate*lf;
@@ -992,16 +692,17 @@ elseif (mode =="dynamic")
     
     vehicleState.M_af = 0; vehicleState.M_ar = 0;
     vehicleState.M_bf = 0; vehicleState.M_br = 0;
+    vehicleState.time = 0;
 elseif (mode =="dynamicSimplified")
     lf = 1; lr = 1.5; r = 0.309725;
     
     vehicleState.X = segment_m(index, indexes.X_abs);
     vehicleState.Y = segment_m(index, indexes.Y_abs);
     vehicleState.theta = segment_m(index, indexes.theta_calc);
-    vehicleState.v_x = segment_m(index, indexes.velocityX);
+    vehicleState.v_x = segment_m(index, indexes.VelocityX);
     vehicleState.v_y = 0;
-    vehicleState.t0 = segment_m(index, indexes.q_T0);
-    vehicleState.yawRate = segment_m(index, indexes.yawRate);
+    vehicleState.t0 = segment_m(index, indexes.Relative_time);
+    vehicleState.yawRate = segment_m(index, indexes.YawRate);
     vehicleState.steeringAngle = 0;
     vehicleState.v_fx = vehicleState.v_x;
     vehicleState.v_fy = vehicleState.v_y + vehicleState.yawRate*lf;
@@ -1027,7 +728,6 @@ function vehicleState = loadModel(vehicleState)
     vehicleState.M_bf = vehicleState.v_fx * b;
     vehicleState.M_br = vehicleState.v_rx * b;
 end
-
 
 function [vehicleState, nearestIndex] = setVehiclePositionToNearest(segment_m, indexes, vehicleState)
 global modelMode    
@@ -1073,219 +773,13 @@ function [priorPath, u, dy] = planner (scenario, indexes, previousPosteriorPath,
             [priorPath, u, dy] = ldm (scenario, indexes, previousPosteriorPath, P_npDistances, parameters.P_LDM);
         case "eldm"
             [priorPath, u ,dy] = eldm (scenario, indexes, previousPosteriorPath, P_npDistances, parameters.P_ELDM);
-        case "dnn"
-            [priorPath, u, dy] = dnn (scenario, indexes, previousPosteriorPath, net);
         case "groundTruth"
             [priorPath, u, dy] = groundTruth (scenario, indexes, previousPosteriorPath);
         case "modifiedGroundTruth"
             [priorPath, u, dy] = modifiedGroundTruth (scenario, indexes, previousPosteriorPath);
-        case "gp"
-            [path, u, dy] = gp (scenario, indexes, previousPath, parameters);
         otherwise
             priorPath = [scenario(:,indexes.X_abs) scenario(:,indexes.Y_abs)];
     end
-end
-
-function [path, u, dy] = gp (scenario, indexes, previousPath, parameters)
-    % This function calculates the node points in front of the vehicle,
-    % then applies the driver model to calculate the offset to the
-    % mid-lane. Finally, a curve is fit onto the node points to result the
-    % final path. The entire planning happens in the global UTF frame
-    % Inputs:
-    % [1] scenario - array with all signals, cut for the planning horizon 
-    % [2] previous path - the previously planned trajectory, used for
-    % initializing the new trajectory
-
-    %% step 0: calculating the planner frame
-    % finding the closest point in the scenario
-    distances = ((scenario(:,indexes.X_abs)-previousPath(end,1)).^2+...
-        (scenario(:,indexes.Y_abs) - previousPath(end,2)).^2).^0.5;
-    nearestPoint = find(distances == min(distances),1);
-    
-    % estimation of orientation:
-    if (size(previousPath,1) > 1)
-        theta0 = atan2((previousPath(end,2)-previousPath(end-1,2)),(previousPath(end,1)-previousPath(end-1,1)));
-    else
-        theta0 = scenario(nearestPoint(1,1), indexes.theta_calc);
-    end
-    plannerFrame = [previousPath(end,:) theta0];
-    Tplanner = [cos(theta0) sin(theta0); -sin(theta0) cos(theta0)];
-    
-    %% step 1: calculating the node points
-    % Node Point Model
-    corridorGlobalFrame = [scenario(nearestPoint(1,1):end,indexes.corrX) scenario(nearestPoint(1,1):end,indexes.corrY)];
-    corridorPlannerFrame = (corridorGlobalFrame-plannerFrame(1:2))*Tplanner';
-    [indeces, ~] = nodePointModel(corridorPlannerFrame, parameters.P_npDistances);
-    
-    referenceGlobalFrame = [scenario(nearestPoint(1,1):end,indexes.X_abs) scenario(nearestPoint(1,1):end,indexes.Y_abs)];
-    referencePlannerFrame = (referenceGlobalFrame-plannerFrame(1:2))*Tplanner';
-    Y_reference = referencePlannerFrame(indeces(2:end),2);
-    
-    % nominal road points
-    X_nominal = corridorPlannerFrame(indeces(2:end),1);
-    Y_nominal = corridorPlannerFrame(indeces(2:end),2);
-    theta_nominal = scenario(indeces(2:end) + nearestPoint(1,1),indexes.c1)+ ...
-        scenario(indeces(2:end) + nearestPoint(1,1),indexes.theta_calc)- ...
-        plannerFrame(3);
-    
-    %% step 2: calculating the offsets
-    % Offset Model
-    u = zeros(3,1);
-    kappa_nominal = zeros(3,1);
-    scenario(:,indexes.c2) = movmean(scenario(:,indexes.c2),100);
-    for j=1:length(indeces)-1
-        kappa_nominal(j,1) = mean(scenario(indeces(j) + nearestPoint(1,1):indeces(j+1) + nearestPoint(1,1),indexes.c2));
-    end
-    kappa_nominal = kappa_nominal*mean(scenario(:, indexes.velocityX))^2;
-    % scaling of the predictor variables
-    kappa_lim = 0.001*54^2;
-%     u_lim = [ones(6,1)*kappa_lim; 1];
-%     u = [max(kappa_nominal,0); min(kappa_nominal,0); 1];
-    u_lim = ones(length(indeces)-1,1)*kappa_lim;
-    u = kappa_nominal;
-    u = u./u_lim;
-    
-    % Reference calculation - transformed to local coordinate frame
-    dy(1:length(indeces)-1,1) = (Y_reference - Y_nominal).*cos(theta_nominal);
-
-    %% step 3: calculating final node points
-    Y = Y_nominal + dy.*cos(theta_nominal);
-    X = X_nominal - dy.*sin(theta_nominal);
-    theta = theta_nominal;
-    
-    % extending with origin of the planner frame
-    Y = [0; Y]; X = [0;X]; theta = [0; theta];
-    
-    %% step 4: curve fitting model
-    refX = corridorPlannerFrame(:,1)';
-    [pathPlannerFrame, ~] = trajectory_planner([X;Y;theta], indeces, refX',0);
-    
-    %% step 5: converting to global frame
-    path = pathPlannerFrame*Tplanner + plannerFrame(1:2);
-
-end
-
-function posteriorPath = curvePolicy (scenario, indexes, priorPath, vehicleState)
-    global modelID parameters
-    % curve policy returns the posterior path which is a corrigated path
-    % based on the control dynamics of a given driver
-    % transforming prior Path to local frame
-    
-    if (modelID ~="groundTruth")
-        T = [cos(vehicleState.theta) sin(vehicleState.theta); -sin(vehicleState.theta) cos(vehicleState.theta)];
-        priorPathEgoFrame = (priorPath-[vehicleState.X vehicleState.Y])*T';
-        posteriorPath = priorPathEgoFrame;
-        P.Kp = parameters.P_curvePolicy(1);
-        P.Ki = parameters.P_curvePolicy(2);
-        % time channel production, considering current vehicle speed
-        vx = vehicleState.vx;
-        displacements = (diff(priorPath(:,1)).^2 + diff(priorPath(:,2)).^2).^0.5; % in meters
-        dtimes = displacements/vx;
-        % find the look ahead point
-        lad = vx*parameters.P_curvePolicy(3); % the look ahead time
-        % loop through the prioPath to modify it according to control driver
-        nearestIndex = find(posteriorPath(:,1)>=0,1);
-        
-        modelVehicleState = vehicleState;
-        modelVehicleState.X = 0;
-        modelVehicleState.Y = 0;
-        modelVehicleState.theta = 0;
-        ie = 0;
-        for i=max(2,nearestIndex(1,1)):size(priorPath,1)
-            yR = spline(priorPathEgoFrame(i-1:end,1), priorPathEgoFrame(i-1:end,2), lad+posteriorPath(i-1,1));
-            [modelVehicleState.steeringAngle, ie] = compensatoryDriverModel(yR, modelVehicleState.Y, P, dtimes(i-1), ie);
-            modelVehicleState = vehicleModel(modelVehicleState, dtimes(i-1));
-            posteriorPath(i,1) = modelVehicleState.X;
-            posteriorPath(i,2) = modelVehicleState.Y;
-        end
-        % transforming back to global frame
-        posteriorPath = posteriorPath*T + [vehicleState.X vehicleState.Y];
-    else
-        posteriorPath = priorPath;
-    end
-
-end
-
-function [steeringAngle, i] = compensatoryDriverModel(yref, y, P_controlDriverModel, Ts, ik1)
-    e = yref-y;
-    i = ik1 + Ts*e;
-    steeringAngle = P_controlDriverModel.Kp*e + P_controlDriverModel.Ki*i;
-end
-
-function [path, u, dy] = dnn (scenario, indexes, previousPath, net)
-    global parameters
-    % This function calculates the node points in front of the vehicle,
-    % then applies the driver model to calculate the offset to the
-    % mid-lane. Finally, a curve is fit onto the node points to result the
-    % final path. The entire planning happens in the global UTF frame
-    % Inputs:
-    % [1] scenario - array with all signals, cut for the planning horizon 
-    % [2] previous path - the previously planned trajectory, used for
-    % initializing the new trajectory
-
-    %% step 0: calculating the planner frame
-    % finding the closest point in the scenario
-    distances = ((scenario(:,indexes.X_abs)-previousPath(end,1)).^2+...
-        (scenario(:,indexes.Y_abs) - previousPath(end,2)).^2).^0.5;
-    nearestPoint = find(distances == min(distances),1);
-    
-    % estimation of orientation:
-    if (size(previousPath,1) > 1)
-        theta0 = atan2((previousPath(end,2)-previousPath(end-1,2)),(previousPath(end,1)-previousPath(end-1,1)));
-    else
-        theta0 = scenario(nearestPoint(1,1), indexes.theta_calc);
-    end
-    plannerFrame = [previousPath(end,:) theta0];
-    Tplanner = [cos(theta0) sin(theta0); -sin(theta0) cos(theta0)];
-    
-    %% step 1: calculating the node points
-    % Node Point Model
-    corridorGlobalFrame = [scenario(nearestPoint(1,1):end,indexes.corrX) scenario(nearestPoint(1,1):end,indexes.corrY)];
-    corridorPlannerFrame = (corridorGlobalFrame-plannerFrame(1:2))*Tplanner';
-    [indeces, ~] = nodePointModel(corridorPlannerFrame, parameters.P_npDistances);
-    
-    referenceGlobalFrame = [scenario(nearestPoint(1,1):end,indexes.X_abs) scenario(nearestPoint(1,1):end,indexes.Y_abs)];
-    referencePlannerFrame = (referenceGlobalFrame-plannerFrame(1:2))*Tplanner';
-    Y_reference = referencePlannerFrame(indeces(2:end),2);
-    
-    % nominal road points
-    X_nominal = corridorPlannerFrame(indeces(2:end),1);
-    Y_nominal = corridorPlannerFrame(indeces(2:end),2);
-    theta_nominal = scenario(indeces(2:end) + nearestPoint(1,1),indexes.c1)+ ...
-        scenario(indeces(2:end) + nearestPoint(1,1),indexes.theta_calc)- ...
-        plannerFrame(3);
-    
-    %% step 2: calculating the offsets
-    % Offset Model
-    u = zeros(3,1);
-    for j=1:length(indeces)-1
-        u(j,1) = mean(scenario(indeces(j) + nearestPoint(1,1):indeces(j+1) + nearestPoint(1,1),indexes.c2));
-    end
-    % scaling of the predictor variables
-    kappa_lim = 0.001;
-    U_lim = ones(3,1)*kappa_lim;
-    u = u./U_lim;
-
-    % The ouput of the model is the linear combination of predictor variables
-    u_(1:3,1,1) = u;
-    dlu = dlarray(u_, 'CTB');
-    dy = forward(net,dlu);
-    
-    dy = extractdata(dy);
-    %% step 3: calculating final node points
-    Y = Y_nominal + dy.*cos(theta_nominal);
-    X = X_nominal - dy.*sin(theta_nominal);
-    theta = theta_nominal;
-    
-    % extending with origin of the planner frame
-    Y = [0; Y]; X = [0;X]; theta = [0; theta];
-    
-    %% step 4: curve fitting model
-    refX = corridorPlannerFrame(:,1)'; %0:1:corridorPlannerFrame(indeces(4),1); %
-    [pathPlannerFrame, ~] = trajectory_planner([X;Y;theta], indeces, refX',0);
-    
-    %% step 5: converting to global frame
-    path = pathPlannerFrame*Tplanner + plannerFrame(1:2);
 end
 
 function [path, u, dy] = groundTruth (scenario, indexes, previousPath)
@@ -1327,7 +821,7 @@ function [path, u, dy] = groundTruth (scenario, indexes, previousPath)
     % nominal road points
     X_nominal = corridorPlannerFrame(indeces(2:end),1);
     Y_nominal = corridorPlannerFrame(indeces(2:end),2);
-    theta_nominal = scenario(indeces(2:end) + nearestPoint(1,1),indexes.c1)+ ...
+    theta_nominal = scenario(indeces(2:end) + nearestPoint(1,1),indexes.LaneOrientation)+ ...
         scenario(indeces(2:end) + nearestPoint(1,1),indexes.theta_calc)- ...
         plannerFrame(3);
     
@@ -1335,18 +829,11 @@ function [path, u, dy] = groundTruth (scenario, indexes, previousPath)
     % Offset Model
     u = zeros(3,1);
     kappa_nominal = zeros(3,1);
-    scenario(:,indexes.c2) = movmean(scenario(:,indexes.c2),100);
+    scenario(:,indexes.LaneCurvature) = movmean(scenario(:,indexes.LaneCurvature),100);
     for j=1:length(indeces)-1
-        kappa_nominal(j,1) = mean(scenario(indeces(j) + nearestPoint(1,1):indeces(j+1) + nearestPoint(1,1),indexes.c2));
+        kappa_nominal(j,1) = mean(scenario(indeces(j) + nearestPoint(1,1):indeces(j+1) + nearestPoint(1,1),indexes.LaneCurvature));
     end
-    %kappa_nominal = kappa_nominal*mean(scenario(:, indexes.velocityX))^2;
-    % scaling of the predictor variables
-    kappa_lim = 0.001; %*54^2;
-%     u_lim = [ones(6,1)*kappa_lim; 1];
-%     u = [max(kappa_nominal,0); min(kappa_nominal,0); 1];
-    u_lim = ones(length(indeces)-1,1)*kappa_lim;
-    u = kappa_nominal;
-    u = u./u_lim;
+    u = kappa_nominal/0.001;
     
     % Reference calculation - transformed to local coordinate frame
     dy(1:length(indeces)-1,1) = (Y_reference - Y_nominal).*cos(theta_nominal);
@@ -1406,7 +893,7 @@ function [path, u, dy] = modifiedGroundTruth (scenario, indexes, previousPath)
     % nominal road points
     X_nominal = corridorPlannerFrame(indeces(2:end),1);
     Y_nominal = corridorPlannerFrame(indeces(2:end),2);
-    theta_nominal = scenario(indeces(2:end) + nearestPoint(1,1),indexes.c1)+ ...
+    theta_nominal = scenario(indeces(2:end) + nearestPoint(1,1),indexes.LaneOrientation)+ ...
         scenario(indeces(2:end) + nearestPoint(1,1),indexes.theta_calc)- ...
         plannerFrame(3);
     
@@ -1414,9 +901,9 @@ function [path, u, dy] = modifiedGroundTruth (scenario, indexes, previousPath)
     % Offset Model
     u = zeros(3,1);
     kappa_nominal = zeros(3,1);
-    scenario(:,indexes.c2) = movmean(scenario(:,indexes.c2),100);
+    scenario(:,indexes.LaneCurvature) = movmean(scenario(:,indexes.LaneCurvature),100);
     for j=1:length(indeces)-1
-        kappa_nominal(j,1) = mean(scenario(indeces(j) + nearestPoint(1,1):indeces(j+1) + nearestPoint(1,1),indexes.c2));
+        kappa_nominal(j,1) = mean(scenario(indeces(j) + nearestPoint(1,1):indeces(j+1) + nearestPoint(1,1),indexes.LaneCurvature));
     end
     % scaling of the predictor variables
     kappa_lim = 0.001;
@@ -1758,7 +1245,7 @@ global dt
         (scenario(:,indexes.Y_abs) - previousPath(end,2)).^2).^0.5;
     nearestPoint = find(distances == min(distances),1);
     
-    scenario(:,indexes.c2) = movmean(scenario(:,indexes.c2),100);
+    scenario(:,indexes.LaneCurvature) = movmean(scenario(:,indexes.LaneCurvature),100);
     
     % estimation of orientation:
     if (size(previousPath,1) > 1)
@@ -1778,7 +1265,7 @@ global dt
     % nominal road points
     X_nominal = corridorPlannerFrame(indeces(2:end),1);
     Y_nominal = corridorPlannerFrame(indeces(2:end),2);
-    theta_nominal = scenario(indeces(2:end) + nearestPoint(1,1),indexes.c1)+ ...
+    theta_nominal = scenario(indeces(2:end) + nearestPoint(1,1),indexes.LaneOrientation)+ ...
         scenario(indeces(2:end) + nearestPoint(1,1),indexes.theta_calc)- ...
         plannerFrame(3);
     
@@ -1786,7 +1273,7 @@ global dt
     % Offset Model
     U = zeros(N,1);
     for j=1:length(indeces)-1
-        U(j,1) = mean(scenario(indeces(j) + nearestPoint(1,1):indeces(j+1) + nearestPoint(1,1),indexes.c2));
+        U(j,1) = mean(scenario(indeces(j) + nearestPoint(1,1):indeces(j+1) + nearestPoint(1,1),indexes.LaneCurvature));
     end
     % scaling of the predictor variables
     kappa_lim = 0.001;
@@ -1835,9 +1322,9 @@ function [c_3polynomials, U, dy, X,Y,theta] = eldmLite (scenario, indexes, vehic
 %     for i=1:N
 %         % c2 is scaled to curvature
 %         if (i==1)
-%             u(i,1) = 2*scenario(1,indexes.c2)+3*scenario(1,indexes.c3)*P_npDistances(i);
+%             u(i,1) = 2*scenario(1,indexes.LaneCurvature)+3*scenario(1,indexes.c3)*P_npDistances(i);
 %         else
-%             u(i,1) = 2*scenario(1,indexes.c2)+3*scenario(1,indexes.c3)*(P_npDistances(i)+P_npDistances(i-1));
+%             u(i,1) = 2*scenario(1,indexes.LaneCurvature)+3*scenario(1,indexes.c3)*(P_npDistances(i)+P_npDistances(i-1));
 %         end            
 %     end
     % Solution B
@@ -1848,7 +1335,7 @@ function [c_3polynomials, U, dy, X,Y,theta] = eldmLite (scenario, indexes, vehic
     corridorEgoFrame = (corridorGlobalFrame - [vehicleState.X vehicleState.Y])*T';
     [indeces, ~] = nodePointModel(corridorEgoFrame, P_npDistances);
     for j=1:length(indeces)-1
-        u(j,1) = mean(scenario(indeces(j):indeces(j+1),indexes.c2));
+        u(j,1) = mean(scenario(indeces(j):indeces(j+1),indexes.LaneCurvature));
     end
     
     % transforming due to E-LDM structure
@@ -1867,25 +1354,21 @@ function [c_3polynomials, U, dy, X,Y,theta] = eldmLite (scenario, indexes, vehic
     if (nominalSelect == "groundTruth")
         X_nominal = corridorEgoFrame(indeces(2:end),1);
         Y_nominal = corridorEgoFrame(indeces(2:end),2);
-        theta_nominal = atan(scenario(indeces(2:end),indexes.c1))+scenario(indeces(2:end),indexes.theta_calc)-vehicleState.theta;
+        theta_nominal = atan(scenario(indeces(2:end),indexes.LaneOrientation))+scenario(indeces(2:end),indexes.theta_calc)-vehicleState.theta;
     else
         for i=1:N
             X_nominal(i) = P_npDistances(i);
             Y_nominal(i) = c0 + c1*P_npDistances(i) + ...
-                scenario(1,indexes.c2)/2*P_npDistances(i)^2+ ...
+                scenario(1,indexes.LaneCurvature)/2*P_npDistances(i)^2+ ...
                 scenario(1,indexes.c3)/6*P_npDistances(i)^3;
             theta_nominal(i) = atan(c1 + ...
-                scenario(1,indexes.c2)*P_npDistances(i)+ ...
+                scenario(1,indexes.LaneCurvature)*P_npDistances(i)+ ...
                 scenario(1,indexes.c3)/2*P_npDistances(i)^2);
         end
     end
             
     
-    %% step 2: offset model
-    % scaling of the predictor variables
-    kappa_lim = 0.001;
-    U_lim = [ones(6,1)*kappa_lim; 1];
-    U = U./U_lim;
+    %% step 2: offset model   
     % The ouput of the model is the linear combination of predictor variables
     dy = P_ELDM*U;
     % Limitation of the offset
@@ -1971,23 +1454,20 @@ function [path, U, dy] = eldm (scenario, indexes, previousPath, P_npDistances, P
     % nominal road points
     X_nominal = corridorPlannerFrame(indeces(2:end),1);
     Y_nominal = corridorPlannerFrame(indeces(2:end),2);
-    theta_nominal = scenario(indeces(2:end) + nearestPoint(1,1),indexes.c1)+ ...
+    theta_nominal = scenario(indeces(2:end) + nearestPoint(1,1),indexes.LaneOrientation)+ ...
         scenario(indeces(2:end) + nearestPoint(1,1),indexes.theta_calc)- ...
         plannerFrame(3);
     
     %% step 2: calculating the offsets
     % Offset Model
-    U = zeros(7,1);
     kappa_nominal = zeros(3,1);
-    scenario(:,indexes.c2) = movmean(scenario(:,indexes.c2),100);
+    scenario(:,indexes.LaneCurvature) = movmean(scenario(:,indexes.LaneCurvature),100);
     for j=1:length(indeces)-1
-        kappa_nominal(j,1) = mean(scenario(indeces(j) + nearestPoint(1,1):indeces(j+1) + nearestPoint(1,1),indexes.c2));
+        kappa_nominal(j,1) = mean(scenario(indeces(j) + nearestPoint(1,1):indeces(j+1) + nearestPoint(1,1),indexes.LaneCurvature));
     end
+    kappa_nominal = kappa_nominal/0.001;
     % scaling of the predictor variables
-    kappa_lim = 0.001;
-    U_lim = [ones(6,1)*kappa_lim; 1];
     U = [max(kappa_nominal,0); min(kappa_nominal,0); 1];
-    U = U./U_lim;
     % The ouput of the model is the linear combination of predictor variables
     dy = P_ELDM*U;
     dy(1:3) = min(max(-1.25,dy(1:3)), 1.25);

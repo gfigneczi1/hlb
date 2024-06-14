@@ -1,7 +1,7 @@
 close all;
 clear;
 
-pathData = "C:\git\KDP_Igneczi\publikációk\MOST_2024\parametersAllDrivers.mat";
+pathData = "C:\database\LDM_PARAMS\parametersAllDrivers.mat";
 load(pathData);
 
 set(0,'defaulttextInterpreter','latex') ;

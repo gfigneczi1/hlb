@@ -52,8 +52,6 @@ for fileID=1:size(segments.segments,2)
         end
         if (N > 0)
             [traj, ref, cor, corLeft, corRight, ~, curv, GT_U, GT_Y, validPoints, replan_array, GT_U_array, GT_Y_array, trajFull, refFull, corFull] = functional_driverModelWithPlanner(P0, 0);
-            GT_U_array = [GT_U_array GT_U];
-            GT_Y_array = [GT_Y_array GT_Y];
 
             % measurement based evaluation
             if (~isempty(traj))
@@ -74,6 +72,10 @@ for fileID=1:size(segments.segments,2)
         plot_driverModelTrajectoryHistogram([], traj(abs(curv)>2.5e-4,:),cor(abs(curv)>2.5e-4,:), strcat(name,"_deviationHistogramHumanInCurve"));
         plot_driverModelTrajectoryHistogram([], traj(abs(curv)<=2.5e-4,:),cor(abs(curv)<=2.5e-4,:), strcat(name,"_deviationHistogramHumanInStraight"));
 
+        parameters_out(fileID).U = GT_U;
+        parameters_out(fileID).dY = GT_Y(2:end,:);
+        parameters_out(fileID).drID = str2num(name(3:5));
+
         clear segment;
     catch e
         disp("The following file could not be evaluated:");
@@ -82,8 +84,10 @@ for fileID=1:size(segments.segments,2)
     end
 end
 
+save(fullfile(config.root,"plots", 'parametersAllDrivers.mat'), 'parameters_out');
+
 % all measurements evaluation
-plot_correlationPlotsLDM(config,GT_U_array,GT_Y_array,"all");
+%plot_correlationPlotsLDM(config,GT_U_array,GT_Y_array,"all");
     
 end
 

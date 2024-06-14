@@ -9,6 +9,8 @@ function matlab_evaluation_cover(root)
 % - Segmentation
 % - Evaluation
 
+close all;
+
     % Input reading
     if (nargin == 0)
         root = fullfile('..','..','_temp');

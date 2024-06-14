@@ -1,7 +1,7 @@
 
 path = "";
 
-matFiles = dir("C:\git\KDP\HLB_for_AV_MotionControl\02_Results\MassMeasurements\Dr015\*_withTraffic.mat");
+matFiles = dir("C:\git\hlb\_temp\*.mat");
 
 signalNames = ["VelocityX_ESP", "VelocityX"; ...
     "SteeringTorque", "SteeringTorque"; ...

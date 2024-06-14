@@ -26,12 +26,18 @@ SPARSE_DATA = false;
 GREEDY_REDUCTION = true;
 
 usedInputs = ones(1,8);
-usedInputs = eye(8);
-usedInputs = 1-usedInputs;
-usedInputs = ones(1,8); usedInputs(1,3) = 0; usedInputs(1,1) = 0;
-%kernels = ["@covSEard","{'covSum', {'covSEard', 'covLINard'}}",  "{'covProd', {'covLINard', 'covLINard'}}", "{'covSum',{{'covProd', {'covLINard', 'covLINard'}}, 'covSEard'}}"];
+usedInputs(1,2:3) = 0; % no O_t no fO_t
+
+kernels = ["@covSEard", ...
+    "{'covSum', {'covSEard', 'covLINard'}}",  ...
+    "{'covProd', {'covLINard', 'covLINard'}}", ...
+    "{'covSum',{{'covProd', {'covLINard', 'covLINard'}}, 'covSEard'}}", ...
+    "{'covSum', {'covLINard', 'covSEard', {'covPPard',3}}}", ...
+    "{'covPPard',3}", ...
+    "{'covSum', {'covLINard', {'covPPard',3}}}", ...
+    "{'covSum', {'covSEard', {'covPPard',3}}}"];
 %kernels = ["{'covSum',{{'covProd', {'covLINard', 'covLINard'}}, 'covSEard'}}"];
-kernels = ["{'covSEard'}"];
+%kernels = ["{'covSum',{{'covProd', {'covLINard', 'covLINard'}}, 'covSEard'}}"];
 
 if (MERGE_DATA_TABLES)
     for i=1:length(segments.segments)
@@ -58,12 +64,17 @@ set(0,'DefaultFigureVisible','off');
 % PARAMETERS
 shiftOnOutputSelection = OUTPUT_SHIFT;  %shift the offset in time (positive means shift forward)
 p = RATIO_OF_TRAIN_VS_TOTAL; %percentage of evaluation data from entire dataset
-dT = mean(diff(segment_m(:, indexes.Relative_time)));
 
 for driverID = 1:size(segments.segments,2)
     DRIVER_ID_IF_NOT_MERGED = driverID;
-for kernelID = 1:size(usedInputs,1)
-    usedInput = usedInputs(kernelID,:);
+    segment = segments.segments(DRIVER_ID_IF_NOT_MERGED).segment;
+    name = segments.segments(DRIVER_ID_IF_NOT_MERGED).name;
+    % transforming the struct to array for lower calculation time
+    [~, segment_m, indexes] = prepareInputForPlanner(segment);
+    dT = mean(diff(segment_m(:, indexes.Relative_time)));
+for kernelID = 7:8 %length(kernels) %size(usedInputs,1)
+    usedInput = usedInputs(1,:);
+    KERNEL_TYPE = kernels(kernelID);
     for shiftID=1:numel(OUTPUT_SHIFT)
         tic;
         dx = segment_m(:, indexes.VelocityX)*dT;
@@ -184,12 +195,18 @@ for kernelID = 1:size(usedInputs,1)
                 hyp = struct('mean', [], 'cov', [0,0,0], 'lik', -1);
             elseif (KERNEL_TYPE=="{'covPERiso',{@covRQiso}}")
                 hyp = struct('mean', [], 'cov', [0,0,0,0], 'lik', -1);
+            elseif (KERNEL_TYPE=="{'covPERiso',{@covRQiso}}")
+                hyp = struct('mean', [], 'cov', [0,0,0,0], 'lik', -1);
             elseif (KERNEL_TYPE == "{'covSum', {'covRQiso',{'covPERiso',{@covRQiso}}}}")
                 hyp = struct('mean', [], 'cov', [0, 0, 0, 0, 0, 0, 0], 'lik', -1);
             elseif (KERNEL_TYPE == "{'covSum', {'covRQiso',{'covPERiso',{@covRQiso}}, 'covLINiso'}}")
                 hyp = struct('mean', [], 'cov', [0, 0, 0, 0, 0, 0, 0, 0], 'lik', -1);
-            elseif (KERNEL_TYPE == "{'covSum', {'covRQiso','covLINiso'}}")
-                hyp = struct('mean', [], 'cov', [0, 0, 0, 0], 'lik', -1);
+            elseif (KERNEL_TYPE == "{'covPERard', {@covSEard}}")
+                hyp = struct('mean', [], 'cov', ones(1,3*size(input_estimation,2)+1), 'lik', -1);
+            elseif (KERNEL_TYPE == "{'covPPard',3}")
+                hyp = struct('mean', [], 'cov', ones(1,size(input_estimation,2)+1), 'lik', -1);
+            elseif (KERNEL_TYPE == "{'covSum', {'covLINard', 'covSEard', {'covPPard',3}}}") 
+                hyp = struct('mean', [], 'cov', ones(1,3*size(input_estimation,2)+2), 'lik', -1);
             elseif (KERNEL_TYPE == "{'covSum', {'covSEiso', 'covLINiso'}}")
                 hyp = struct('mean', [], 'cov', [0, 0, 0], 'lik', -1);
             elseif (KERNEL_TYPE == "{'covSum', {'covSEiso', 'covLINiso', {'covPERiso',{@covRQiso}}}}")
@@ -206,10 +223,14 @@ for kernelID = 1:size(usedInputs,1)
                 hyp = struct('mean', [], 'cov', ones(1,2*size(input_estimation,2)), 'lik', -1);
             elseif (KERNEL_TYPE == "{'covSum',{{'covProd', {'covLINard', 'covLINard'}}, 'covSEard'}}")
                 hyp = struct('mean', [], 'cov', ones(1,3*size(input_estimation,2)+1), 'lik', -1);
+            elseif (KERNEL_TYPE == "{'covSum', {'covLINard', {'covPPard',3}}}")
+                hyp = struct('mean', [], 'cov', ones(1,2*size(input_estimation,2)+1), 'lik', -1);
+            elseif (KERNEL_TYPE == "{'covSum', {'covSEard', {'covPPard',3}}}")
+                hyp = struct('mean', [], 'cov', ones(1,2*size(input_estimation,2)+2), 'lik', -1);
             else
                 hyp = struct('mean', [], 'cov', [0, 0], 'lik', -1);
             end
-    
+
             if (EPOCH_CALCULATION)
                 % cut the estimation data to epochs, and loop through it for
                 % training
@@ -343,6 +364,8 @@ for kernelID = 1:size(usedInputs,1)
                 fprintf("RMS value is: %f\n", RMS);
                 fprintf("NRMS value based on range: %f\n", NRMS_W);
                 fprintf("NRMS value based on absolute maximum: %f\n", NRMS_M);
+            else
+                RMS=0; NRMS_W = 0; NRMS_M = 0; RMS_DEV = 0;
             end
     
             % Evaluation of estimation data
@@ -472,6 +495,9 @@ for kernelID = 1:size(usedInputs,1)
             end
         
             KPI{shiftID,i}= [RMS NRMS_W NRMS_M RMS_DEV RMSest NRMS_W_est NRMS_M_est RMS_DEV_est hyp_opt.cov];
+            ETA(shiftID).hyp_opt = hyp_opt.cov;
+            ETA(shiftID).input_estimation = input_estimation;
+            ETA(shiftID).output_estimation = output_estimation;
 
             fprintf("time of shift id %d is %f\n", shiftID, toc);        
         end
@@ -480,6 +506,7 @@ for kernelID = 1:size(usedInputs,1)
     
     end % end of shift selection
     save( fullfile(temp_folder_path, plots_folder_name,strcat('KPI_input_', num2str(kernelID), '_driver_', num2str(driverID), '.mat')), 'KPI');
+    save( fullfile(temp_folder_path, plots_folder_name,strcat('ETA_input_', num2str(kernelID), '_driver_', num2str(driverID), '.mat')), 'ETA');
     save( fullfile(temp_folder_path, plots_folder_name,strcat('KPIsum_input_', num2str(kernelID), '_driver_', num2str(driverID), '.mat')), 'KPIsum');
 end
 end

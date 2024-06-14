@@ -72,11 +72,11 @@ function [segments] = segmentor_driverModel(input_folder)
                 rawData = structure_filter(rawData, "GPS_status", 4, "GT");
                 rawData = structure_filter(rawData, "localization", 1, "EQ");
                 % 1: country road; 2: highway
-                rawData = structure_filter(rawData, "roadType", roadTypeFilter, "EQ");
+                %rawData = structure_filter(rawData, "roadType", roadTypeFilter, "EQ");
                 %rawData = structure_filter(rawData, "isStraight", 1, "EQ");
                 rawData = structure_filter(rawData, "invalidSpeed", 0, "EQ");
-                rawData = structure_filter(rawData, "invalidC0", 0, "EQ");
-                rawData = structure_filter(rawData, "invalidC1", 0, "EQ");
+                %rawData = structure_filter(rawData, "invalidC0", 0, "EQ");
+                %rawData = structure_filter(rawData, "invalidC1", 0, "EQ");
                 if (isfield(rawData,'control_active'))
                     %rawData = structure_filter(rawData, "control_active", 3, "EQ");
                 end

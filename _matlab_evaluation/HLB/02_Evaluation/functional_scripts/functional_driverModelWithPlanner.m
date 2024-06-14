@@ -76,7 +76,7 @@ function [traj, ref, cor, corLeft, corRight, orient, curv, GT_U, GT_Y, validPoin
     endIdx = min(n,endIdx);
     startingIndex = startIdx;
     endIndex =  1000;
-    replanCycle = 1;
+    replanCycle = 10;
     replan = 1;
     initialized = 0;
     counter = 1; % counter, how far we went in the previous trajectory
@@ -89,7 +89,7 @@ function [traj, ref, cor, corLeft, corRight, orient, curv, GT_U, GT_Y, validPoin
     GT_Y_array = [];
     
     %% Iteration through measurement data
-    maxStepSize = segment_m(:,indexes.velocityX) * 0.1; % v * t, t = 100ms (50ms sampling time is assumed);
+    maxStepSize = segment_m(:,indexes.VelocityX) * 0.1; % v * t, t = 100ms (50ms sampling time is assumed);
     for i=startIdx:endIdx
         %replan_array(i-startIdx+1) = replan;
         if ((((segment_m(i,indexes.X_abs)-segment_m(i-1,indexes.X_abs))^2+(segment_m(i,indexes.Y_abs)-segment_m(i-1,indexes.Y_abs))^2)^0.5) > maxStepSize(i))
