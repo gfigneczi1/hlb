@@ -126,7 +126,11 @@ switch SIMULATION_MODE
         k=1;
         for j=1:length(data.parameters_out)
             if (data.parameters_out(j).drID ~= 8 || data.parameters_out(j).drID ~= 9)
-                parameterRawData(:,k) = functional_driverModelLearning(data.parameters_out(j).U, data.parameters_out(j).dY ,8);
+                parameterRawData(:,k) = functional_driverModelLearning(data.parameters_out(j).U', data.parameters_out(j).dY' ,7);
+                dataOut.data(k).U = data.parameters_out(j).U;
+                dataOut.data(k).dY = data.parameters_out(j).dY;
+                dataOut.data(k).P_GT = parameterRawData(:,k);
+                dataOut.data(k).drID = data.parameters_out(j).drID;
                 k = k+1;
             end
         end
@@ -137,6 +141,7 @@ switch SIMULATION_MODE
         normalizedParams = [normalizedParams; parameterRawData(19,:)/max(abs(parameterRawData(19,:)))];
 
         [driverClusters,~,sumD] = kmeans(normalizedParams',K, 'Distance','sqeuclidean', 'MaxIter', 1000, 'Replicates',10); 
+        dataOut.driverClusters = driverClusters;
         f = figure(5);
         set(f,'defaulttextInterpreter','latex') ;
         set(f, 'defaultAxesTickLabelInterpreter','latex');  
@@ -165,13 +170,18 @@ switch SIMULATION_MODE
             for j=1:numberOfDrivers
                 drID = data.parameters_out(j).drID;
                 driverParam = parameterRawData(:,j);
-                if (driverClusters(drID) == clusterIDs(k))
+                if (driverClusters(j) == clusterIDs(k))
                    noDriversInCluster = noDriversInCluster + 1;
-                   parameters.P_ELDM = reshape(driverParam, 3,7);
+                   P = reshape(driverParam(1:18),3,6);
+                   parameters.P_ELDM = [P [driverParam(end); driverParam(end); driverParam(end)]];
                    if (isempty(P_averaged))
                        P_averaged = parameters.P_ELDM;
+                       Ptemp = reshape(parameters.P_ELDM,21,1);
+                       P_all = Ptemp(1:19);
                    else
                        P_averaged = 1/noDriversInCluster * ((noDriversInCluster-1)*P_averaged + parameters.P_ELDM);
+                       Ptemp = reshape(parameters.P_ELDM,21,1);
+                       P_all = [P_all Ptemp(1:19)];
                    end
                    [path, Udrivers{j}, dYdrivers{j}, plannedPath, ~, vehicleStateMemory] = pathGeneration();
                    offsetPath = offsetCalculation(corFine, path);
@@ -179,7 +189,11 @@ switch SIMULATION_MODE
                    title(strcat('Cluster',{' '}, num2str(clusterIDs(k))));
                 end
             end
-            parameters.P_ELDM = P_averaged;
+            P_median = median(P_all');
+            Ptemp = reshape([P_median P_median(end) P_median(end)], 3,7);
+            parameters.P_ELDM = P_averaged; %Ptemp;
+            Ptemp = [P_median P_median(end) P_median(end)]; %;
+            Pcentroids{k} = reshape(P_averaged,21,1); %Ptemp(1:19);
             disp(P_averaged);
            [path, Uarray{k}, dYarray{k}, plannedPath] = pathGeneration();
            offsetPath = offsetCalculation(corFine, path);
@@ -197,35 +211,32 @@ switch SIMULATION_MODE
         end
 end
 
+dataOut.Pcentroids = Pcentroids;
+save(fullfile(config.root,"plots", 'dataOut.mat'), 'dataOut');
+
 f = figure(3);
 set(f,'defaulttextInterpreter','latex') ;
 set(f, 'defaultAxesTickLabelInterpreter','latex');  
 set(f, 'defaultLegendInterpreter','latex');
 f.Position = [100 100 505 310];
 ulims = linspace(-5,5, 100);
-plot(Uarray{1}(1,:),dYarray{1}(1,:), 'bo', 'HandleVisibility','off'); hold on;
-plot(Uarray{1}(4,:),dYarray{1}(1,:), 'bo', 'HandleVisibility','off');
-plot(Uarray{2}(1,:),dYarray{2}(1,:), 'rx', 'HandleVisibility','off');
-plot(Uarray{2}(4,:),dYarray{2}(1,:), 'rx', 'HandleVisibility','off');
-plot(Uarray{3}(1,:),dYarray{3}(1,:), 'g*', 'HandleVisibility','off');
-plot(Uarray{3}(4,:),dYarray{3}(1,:), 'g*', 'MarkerSize', 4, 'HandleVisibility','off');
-
-% fit curve
-cLeft = polyfit(Uarray{1}(1,Uarray{1}(1,:)>0.25),dYarray{1}(1,Uarray{1}(1,:)>0.25),1);
-cRight = polyfit(Uarray{1}(4,Uarray{1}(4,:)<0.25),dYarray{1}(1,Uarray{1}(4,:)<0.25),1);
-plot(ulims(51:100),cLeft(2)+cLeft(1)*ulims(51:100), 'LineWidth',2, 'color', 'b'); plot(ulims(1:50),cRight(2)+cRight(1)*ulims(1:50), 'LineWidth',2, 'color', 'b', 'HandleVisibility','off');
-cLeft = polyfit(Uarray{2}(1,Uarray{2}(1,:)>0.25),dYarray{2}(1,Uarray{1}(1,:)>0.25),1);
-cRight = polyfit(Uarray{2}(4,Uarray{2}(4,:)<0.25),dYarray{2}(1,Uarray{1}(4,:)<0.25),1);
-plot(ulims(51:100),cLeft(2)+cLeft(1)*ulims(51:100), 'LineWidth',2, 'color', 'r'); plot(ulims(1:50),cRight(2)+cRight(1)*ulims(1:50), 'LineWidth',2, 'color', 'r', 'HandleVisibility','off');
-cLeft = polyfit(Uarray{3}(1,Uarray{3}(1,:)>0.25),dYarray{3}(1,Uarray{1}(1,:)>0.25),1);
-cRight = polyfit(Uarray{3}(4,Uarray{3}(4,:)<0.25),dYarray{3}(1,Uarray{1}(4,:)<0.25),1);
-plot(ulims(51:100),cLeft(2)+cLeft(1)*ulims(51:100), 'LineWidth',2, 'color', 'g'); plot(ulims(1:50),cRight(2)+cRight(1)*ulims(1:50), 'LineWidth',2, 'color', 'g', 'HandleVisibility','off');
+markers = ['o', 'x', '*'];
+colors = ['b', 'r', 'g'];
+for i=1:length(Pcentroids)
+    plot(Uarray{i}(1,:),dYarray{i}(1,:), 'color', colors(i), 'Marker', markers(i), 'LineStyle', 'none', 'HandleVisibility','off'); hold on;
+    plot(Uarray{i}(4,:),dYarray{i}(1,:), 'color', colors(i), 'Marker', markers(i), 'LineStyle', 'none', 'HandleVisibility','off');
+    % fit curve
+    cLeft = polyfit(Uarray{i}(1,Uarray{i}(1,:)>0.25),dYarray{i}(1,Uarray{i}(1,:)>0.25),1);
+    cRight = polyfit(Uarray{i}(4,Uarray{i}(4,:)<0.25),dYarray{i}(1,Uarray{i}(4,:)<0.25),1);
+    plot(ulims(51:100),cLeft(2)+cLeft(1)*ulims(51:100), 'LineWidth',2, 'color', colors(i), 'DisplayName',strcat("Cluster",{' '},num2str(i))); 
+    plot(ulims(1:50),cRight(2)+cRight(1)*ulims(1:50), 'LineWidth',2, 'color', colors(i), 'HandleVisibility','off');
+end
 grid on;
-legend("Cluster 1", "Cluster 2", "Cluster 3", 'Orientation','horizontal','Location','north');
+legend('Orientation','horizontal','Location','north');
 title("Correlation plot of clusters");
 ylim([-1.25,1.25]);
 xlim([-5,5]);
-xlabel("Noramlized curvature to 0.001 (1/m)");
+xlabel("Normalized curvature to 0.001 (1/m)");
 ylabel("Lane offset (m)");
 set(gca,'FontSize',14);
 
@@ -1469,8 +1480,9 @@ function [path, U, dy] = eldm (scenario, indexes, previousPath, P_npDistances, P
     % scaling of the predictor variables
     U = [max(kappa_nominal,0); min(kappa_nominal,0); 1];
     % The ouput of the model is the linear combination of predictor variables
-    dy = P_ELDM*U;
+    dy = U(1:3)'*P_ELDM(:,1:3)+U(4:6)'*P_ELDM(:,4:6)+P_ELDM(:,7)';
     dy(1:3) = min(max(-1.25,dy(1:3)), 1.25);
+    dy = dy';
     
     %% step 3: calculating final node points
     Y = Y_nominal + dy.*cos(theta_nominal);

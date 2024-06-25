@@ -1,225 +1,53 @@
 close all;
 clear;
 
-pathData = "C:\database\LDM_PARAMS\parametersAllDrivers.mat";
+pathData = "C:\git\hlb\_temp\plots\dataOut.mat";
 load(pathData);
 
 set(0,'defaulttextInterpreter','latex') ;
 
 config.PARAMETER_CLUSTERING = true;
-config.CONV_ANALYSIS = false;
-config.VIDEO_GENERATION = false;
-config.REGRESSION_PLOTS = false;
 config.GENERATE_EST_PLOTS = true;
 config.USE_SYNTHETIC_DATA = false;
+config.DATA_RESTRUCTURE = true;
+
+clc;
+
+for driverId = 1:length(dataOut.data)
+    data{driverId} = estimateParameters(driverId, dataOut, config);
+
+    %plotParams(data(driverId).data(1), "left");
+    fprintf("Results of right side:\n");
+    printResults(data{driverId}.data(1));
+    fprintf("\n");
+    fprintf("Results of left side:\n");
+    printResults(data{driverId}.data(2));
+end
 
 if (config.PARAMETER_CLUSTERING)
-    for i=1:length(parameters_out)
-        thd = 0.25;
-        U = parameters_out(i).U';
-        dY = parameters_out(i).dY';
-
-        straightLineIndeces = mean(abs(U')) <= thd;
-        p0 = mean(mean(dY(straightLineIndeces,:)));
-        
-        dY = dY-p0;
-    
-        leftCurveIndeces = mean(U') >= thd;
-        rightCurveIndeces = mean(U') <= -thd;
-        U_left = U(leftCurveIndeces,:);
-        dY_left = dY(leftCurveIndeces,:);
-        U_right = U(rightCurveIndeces,:);
-        dY_right = dY(rightCurveIndeces,:);
-        
-        P_LDM_left = inv(U_left'*U_left)*U_left'*dY_left(:,:);
-        P_LDM_right = inv(U_right'*U_right)*U_right'*dY_right(:,:);
-
-        P_LDM = [reshape(P_LDM_left,9,1); reshape(P_LDM_right,9,1); p0];
-        P_LDM = functional_driverModelLearning(U', dY' ,8);
-        P(i,:) = P_LDM(1:19)';
-    end
-
-    idx = kmeans(P,3);
-    uniqueIDs = unique(idx);
-    for i=1:length(uniqueIDs)
-        Pcentroids{i} = sum(P(idx==uniqueIDs(i),:))/numel(find(idx==uniqueIDs(i)));
-    end
-end
-
-%% CONVERGENCE ANALYSIS
-if (config.CONV_ANALYSIS)
-thd = 0.1;
-convThd= 0.1;
-for i=1:length(parameters_out)
-    U = parameters_out(i).U';
-    dY = parameters_out(i).dY';
-
-    straightLineIndeces = mean(abs(U')) <= thd;
-    p0 = mean(mean(U(straightLineIndeces,:)));
-    
-    dY = dY-p0;
-
-    leftCurveIndeces = mean(U') >= thd;
-    rightCurveIndeces = mean(U') <= -thd;
-    U_left = U(leftCurveIndeces,:);
-    dY_left = dY(leftCurveIndeces,:);
-    U_right = U(rightCurveIndeces,:);
-    dY_right = dY(rightCurveIndeces,:);
-
-    [U_left, dY_left] = dataRestructure (U_left, dY_left, "random");
-    [U_right, dY_right] = dataRestructure (U_right, dY_right, "random");
-    
-    P_LDM_left = inv(U_left'*U_left)*U_left'*dY_left(:,:);
-    P_LDM_right = inv(U_right'*U_right)*U_right'*dY_right(:,:);
-
-    f = figure('Position', [100,100, 1200, 300]);
-    
-    for j=1:max(size(U_left,1), size(U_right,1))
-        leftIdx = min(j,size(U_left,1));
-        rightIdx = min(j,size(U_right,1));
-        P_MA_left = inv(U_left(1:leftIdx,:)'*U_left(1:leftIdx,:))*U_left(1:leftIdx,:)'*dY_left(1:leftIdx,:);
-        eL2_MA_LDM(i).epsLeft(j) = sqrt(1/9*sum(sum((P_MA_left-P_LDM_left).^2))) / (max(max(P_LDM_left))-min(min(P_LDM_left)));
-        subplot(1,3,2);
-        hold off;
-        plot(U_left(:,1), dY_left(:,1), 'marker', 'o', 'LineStyle','none', 'color', [224 224 224]/255, 'HandleVisibility','off');
-        hold on;
-        plot(U_right(:,1), dY_right(:,1), 'marker', 'o', 'LineStyle','none', 'color', [224 224 224]/255, 'HandleVisibility','off');
-
-        plot(U_left(1:leftIdx,1), U_left(1:leftIdx,:)*P_LDM_left, 'marker', 'o', 'LineStyle','none', 'color', [96 96 96]/255, 'HandleVisibility','off');
-        plot(U_left(1:leftIdx,1), U_left(1:leftIdx,:)*P_MA_left, 'marker', 'x', 'LineStyle','none', 'color', [102 102 255]/255, 'HandleVisibility','off');
-        grid on;
-        xlim([-3,3]); ylim([-1,1]);
-
-        subplot(1,3,3);
-        hold off; 
-        plot(eL2_MA_LDM(i).epsLeft(1:j), 'bo');
-        hold on;
-        plot(movmean(eL2_MA_LDM(i).epsLeft(1:j), 50), 'color', [102 178 255]/255, 'LineWidth',2);
-        yline(0.1, 'HandleVisibility','off', 'LineWidth',1.5, 'LineStyle','--', 'Label', "$conv_{thd}$");
-        ylim([0,2]); grid on;
-        xlabel('Cycle number(-)', 'FontSize', 12);
-        ylabel('NRMS', 'FontSize', 12);
-        
-        title('\textbf{NRMS - estimation error, $P_{left}$}', 'Interpreter','latex', 'FontSize', 12);
-        legend('NRMS', 'NRMS - Moving averaged(50)', 'FontSize', 10);
-        yline(1, 'HandleVisibility','off', 'color', [75, 75, 75]/255,'LineWidth',2);
-
-        subplot(1,3,2);
-        if (j==1)
-            P_MA_right = inv(U_right(1:rightIdx,:)'*U_right(1:rightIdx,:))*U_right(1:rightIdx,:)'*dY_right(1:rightIdx,:);
-            eL2_MA_LDM(i).epsRight(j) = sqrt(1/9*sum(sum((P_MA_right-P_LDM_right).^2))) / (max(max(P_LDM_right))-min(min(P_LDM_right)));
-            hold on;
-            plot(U_right(1:rightIdx,1), U_right(1:rightIdx,:)*P_LDM_right, 'marker', 'o', 'LineStyle','none', 'color', [96 96 96]/255, 'DisplayName', 'End parameter');
-            plot(U_right(1:rightIdx,1), U_right(1:rightIdx,:)*P_MA_right, 'marker', 'x', 'LineStyle','none', 'color', [102 102 255]/255, 'DisplayName', 'Moving Parameter');
-        else
-            P_MA_right = inv(U_right(1:rightIdx,:)'*U_right(1:rightIdx,:))*U_right(1:rightIdx,:)'*dY_right(1:rightIdx,:);
-            eL2_MA_LDM(i).epsRight(j) = sqrt(1/9*sum(sum((P_MA_right-P_LDM_right).^2))) / (max(max(P_LDM_right))-min(min(P_LDM_right)));
-            hold on;
-            plot(U_right(1:rightIdx,1), U_right(1:rightIdx,:)*P_LDM_right, 'marker', 'o', 'LineStyle','none', 'color', [96 96 96]/255, 'HandleVisibility','off');
-            plot(U_right(1:rightIdx,1), U_right(1:rightIdx,:)*P_MA_right, 'marker', 'x', 'LineStyle','none', 'color', [102 102 255]/255, 'HandleVisibility','off');
-        end
-        title('\textbf{Correlation plot: $np_{n}$ vs. $\overline{\kappa}_{nm}$}', 'FontSize', 12);
-        legend('FontSize', 10);
-        xlabel('$\overline{\kappa}_{nm}$ normalized to 0.001 $\frac{1}{m}$', 'FontSize',12);
-        ylabel('Node point offset $np_{n}$ (m)', 'FontSize',12);
-        xline(0, 'HandleVisibility','off', 'color', [150 150 150]/255, 'LineWidth',1.5);
-        yline(0, 'HandleVisibility','off', 'color', [150 150 150]/255, 'LineWidth',1.5);
-
-        subplot(1,3,1);
-        hold off; 
-        plot(eL2_MA_LDM(i).epsRight(1:j), 'bo');
-        hold on;
-        plot(movmean(eL2_MA_LDM(i).epsRight(1:j), 50), 'color', [102 178 255]/255, 'LineWidth',2);
-        ylim([0,2]); grid on;
-        title('\textbf{NRMS - estimation error -} $P_{right}$', 'Interpreter','latex', 'FontSize', 12);
-        xlabel('Cycle number(-)', 'FontSize', 12);
-        ylabel('NRMS', 'FontSize', 12);
-        legend('NRMS', 'NRMS - Moving averaged(50)', 'FontSize', 10);
-        yline(1, 'HandleVisibility','off', 'color', [75, 75, 75]/255,'LineWidth',2);
-
-        %shg; pause(0.05);
-
-        if (i==1 & config.VIDEO_GENERATION)
-            Frames(round(j/2)+1) = getframe(gcf);
+    driverId = 1;
+    for i=1:length(data)
+        if (dataOut.data(i).drID ~= 8 && dataOut.data(i).drID ~= 9)
+            P(:,driverId) = [reshape(data{driverId}.data(1).GT.Pest,9,1); reshape(data{driverId}.data(2).GT.Pest,9,1); data{driverId}.p0];
+            driverId = driverId+1;
         end
     end
-    if (i==1 & config.VIDEO_GENERATION)
-        myVideo = VideoWriter(fullfile("C:\git\KDP_Igneczi\publikációk\MOST_2024\figures", "LDM_video.avi"));
-        % open the video writer
-        myVideo.FrameRate = 10;
-        open(myVideo);
-        % write the frames to the video
-        for j=2:length(Frames)
-            % convert the image to a frame
-            frame = Frames(j) ;
-            writeVideo(myVideo, frame);
-        end
-        % close the writer object
-        close(myVideo);
-        clear Frames;
+    K = 3;
+    rng(1); %doc: https://www.mathworks.com/help/matlab/math/controlling-random-number-generation.html
+    normalizedParams = P(1:18,:)/max(max(abs(P(1:18,:))));
+    normalizedParams = [normalizedParams; P(19,:)/max(abs(P(19,:)))];
+
+    [driverClusters,~,sumD] = kmeans(normalizedParams',K, 'Distance','sqeuclidean', 'MaxIter', 1000, 'Replicates',10); 
+    for k=1:K
+        Pcentroids.Pcentroids{k} = sum(P(:,driverClusters==k)')'/numel(find(driverClusters==k));
     end
-
-    savefig(f, fullfile("C:\git\KDP_Igneczi\publikációk\MOST_2024\figures",...
-                            strcat('Convergence', 'Driver_', num2str(i), '.fig')));
-    saveas(f, fullfile("C:\git\KDP_Igneczi\publikációk\MOST_2024\figures",...
-                    strcat('Convergence', 'Driver_', num2str(i), '.png')));
-    close(f);
-
-    eL2_MA_LDM(i).NconvLeft = convergenceCheck(eL2_MA_LDM(i).epsLeft, 0.002, 50);
-    eL2_MA_LDM(i).NconvRight = convergenceCheck(eL2_MA_LDM(i).epsRight, 0.002, 50);
+dataOut.Pcentroids = Pcentroids.Pcentroids;
+dataOut.driverClusters = driverClusters;
 end
 
-f = figure('Position', [100, 100, 750, 420]);
-set(f,'defaulttextInterpreter','latex') ;
-set(f, 'defaultAxesTickLabelInterpreter','latex');  
-set(f, 'defaultLegendInterpreter','latex');
-for i=1:length(eL2_MA_LDM)
-    subplot(2,2,1);
-    if (~isempty(eL2_MA_LDM(i).NconvLeft))
-        plot(movmean(eL2_MA_LDM(i).epsLeft,10), 'DisplayName',num2str(parameters_out(i).drID));
-        hold on;
-        grid on;
-        ylim([0,2]);
-        title('$NRMS_{\Delta P_{left}^{MA}}$', 'FontSize', 14);
-        xlabel('#samples','FontSize', 12); ylabel('NRMS', 'FontSize', 12);
-        subplot(2,2,3);
-        plot(i, eL2_MA_LDM(i).NconvLeft, 'o');
-        title('Convergence points', 'FontSize', 14);
-        xlabel('#samples','FontSize', 12); ylabel('$N_{conv}$', 'FontSize', 12);
-        grid on;
-        hold on;
-    end
+classifyDrivers(data, dataOut);
 
-    subplot(2,2,2);
-    if (~isempty(eL2_MA_LDM(i).NconvRight))
-        plot(movmean(eL2_MA_LDM(i).epsRight,10), 'DisplayName',num2str(parameters_out(i).drID));
-        hold on;
-        grid on;
-        ylim([0,2]);
-        title('$NRMS_{\Delta P_{right}^{MA}}$', 'FontSize', 14);
-        xlabel('#samples','FontSize', 12); ylabel('NRMS', 'FontSize', 12);
-        subplot(2,2,4);
-        plot(i, eL2_MA_LDM(i).NconvRight, 'o');
-        title('Convergence points', 'FontSize', 14);
-        xlabel('#samples','FontSize', 12); ylabel('$N_{conv}$', 'FontSize', 12);
-        grid on;
-        hold on;
-    end
-end
-close(f);
-end
-
-data = estimateParameters(1, parameters_out, config);
-
-plotParams(data(1).data(1), "left");
-clc;
-fprintf("Results of right side:\n");
-printResults(data(1).data(1));
-fprintf("\n");
-fprintf("Results of left side:\n");
-printResults(data(1).data(2));
-
-save(fullfile("C:\git\KDP_Igneczi\publikációk\MOST_2024\figures",...
+save(fullfile("../../_temp/plots",...
                         'data.mat'), 'data');
 
 %% end of main scripts
@@ -240,7 +68,6 @@ function plotParams(data, token)
         grid on;
         hold on;
         originalSize = get(gca, 'Position');
-        plot(data.NLMS.output(:,i), 'color', 'm', 'DisplayName',strcat("$P_{est,NLMS}^{", token, "}$"));
         set(gca, 'FontSize', 12);
         if (i==1)
             legend('Location', 'best');            
@@ -251,17 +78,44 @@ function plotParams(data, token)
 
         title(strcat("$P_{", token, "}^{", num2str(k),",", num2str(j),"}$"));
 
-        ylim([max(min(data.EKF.output(:,i)), min(data.NLMS.output(:,i))) - 0.5*abs(max(min(data.EKF.output(:,i)), min(data.NLMS.output(:,i)))), ...
-            min(max(data.EKF.output(:,i)), max(data.NLMS.output(:,i))) + 0.5*abs(min(max(data.EKF.output(:,i)), max(data.NLMS.output(:,i))))]);
+        ylim([max(min(data.EKF.output(:,i))) - 0.5*abs(max(min(data.EKF.output(:,i)))), ...
+            min(max(data.EKF.output(:,i))) + 0.5*abs(min(max(data.EKF.output(:,i))))]);
     end
 
 
-    savefig(f, fullfile("C:\git\KDP_Igneczi\publikációk\MOST_2024\figures",...
+    savefig(f, fullfile("../../_temp/plots",...
                         'Parameter_sweep.fig'));
-    saveas(f, fullfile("C:\git\KDP_Igneczi\publikációk\MOST_2024\figures",...
+    saveas(f, fullfile("../../_temp/plots",...
                             'Parameter_sweep.png'));
     close(f);
 
+end
+
+function classifyDrivers(data, dataOut)
+% loop through the drivers, do classification and print results
+clusters = ["outlier", "dynamic", "balanced"];
+driverId = 1;
+for i = 1:length(data)
+    if (dataOut.data(i).drID ~=8 && dataOut.data(i).drID ~=9)
+        P_left = reshape(data{driverId}.data(1).EKF.Pest,3,3);
+        P_right = reshape(data{driverId}.data(2).EKF.Pest,3,3);
+        P = [reshape(P_left,9,1); reshape(P_right,9,1); data{driverId}.p0];
+        %P = [reshape(data{driverId}.data(1).GT.Pest,9,1); reshape(data{driverId}.data(2).GT.Pest,9,1); data{driverId}.p0];
+        for clusterId = 1:length(dataOut.Pcentroids)
+            Pcent = dataOut.Pcentroids{clusterId};
+            deltaP(clusterId) = (sum((Pcent-P).^2)).^0.5;
+        end
+        [~, c(driverId)] = min(deltaP);
+        if (c(driverId)==dataOut.driverClusters(driverId))
+            res = "match";
+        else
+            res = "mismatch";
+        end
+        fprintf("Cluster for driver %d is: GT: %s, \tEKF: %s, \t res: %s\n", dataOut.data(i).drID, clusters(dataOut.driverClusters(driverId)), clusters(c(driverId)), res);
+        driverId = driverId+1;
+    end
+end
+    
 end
 
 function printResults(data)
@@ -272,21 +126,13 @@ function printResults(data)
     fprintf("\t P0 = diag([%f %f %f %f]\n", diag(data.EKF.initValues.P0));
     fprintf("Final NRMS values:\n");
     fprintf("\tEKF:\t%f\n", data.EKF.terminalError);
-    fprintf("\tNLMS:\t%f\n", data.NLMS.terminalError);
-    fprintf("\tLMS:\t%f\n", data.LMS.terminalError);
     MA_conv = convergenceCheck(data.MA.eL2, 0.002, 50);
     EKF_conv = convergenceCheck(data.EKF.eL2, 0.002, 50);
-    NLMS_conv = convergenceCheck(data.NLMS.eL2, 0.002, 50);
-    LMS_conv = convergenceCheck(data.LMS.eL2, 0.002, 50);
     fprintf("Convergence is reached:\n");
     fprintf("\tEKF: %d, relative to MA: %f\n", EKF_conv, EKF_conv/MA_conv);
-    fprintf("\tLMS: %d, relative to MA: %f\n", LMS_conv,LMS_conv/MA_conv);
-    fprintf("\tNLMS: %d, relative to MA: %f\n", NLMS_conv,NLMS_conv/MA_conv);
     fprintf("\n");
     fprintf("Run time:\n");
     fprintf("\tEKF: %f secs, relative to MA: %f\n", mean(data.EKF.dt), mean(data.EKF.dt)/mean(data.MA.dt));
-    fprintf("\tLMS: %f secs, relative to MA: %f\n", mean(data.LMS.dt), mean(data.LMS.dt)/mean(data.MA.dt));
-    fprintf("\tNLMS: %f secs, relative to MA: %f\n", mean(data.NLMS.dt), mean(data.NLMS.dt)/mean(data.MA.dt));
 end
 
 function [convIndex] = convergenceCheck(data, P_conv, P_minConvLength)
@@ -306,7 +152,7 @@ else
 end
 end
 
-function driverData = estimateParameters(drivers, parameters_out, config)
+function driverData = estimateParameters(driverID, dataOut, config)
     %% In the followings
     % Several methods are compared to each other to estimate the parameters of
     % LDM. Estimation mainly refers to the P matrices (curve matrices)
@@ -314,48 +160,33 @@ function driverData = estimateParameters(drivers, parameters_out, config)
     % the straight line offset is subtracted from the overall data to provide
     % proper inputs for curve parameter estimation.
 
-    for driverID = 1:length(drivers)
-    
-    driver = drivers(driverID);
-    driverData(driverID).driver = driver;
+    driverData.driver = dataOut.data(driverID).drID;
     
     % regression happens for first raw of parameters
-    U = parameters_out(driver).U';
-    dY = parameters_out(driver).dY';
+    U = dataOut.data(driverID).U;
+    dY = dataOut.data(driverID).dY;
 
-    straightLineIndeces = mean(abs(U')) <= 2.5e-1;
-    p0 = mean(mean(dY(straightLineIndeces,:)));
-    
-    dY = dY-p0;
+    [P_GT_, U_left, dY_left, U_right, dY_right] = functional_driverModelLearning(dataOut.data(driverID).U', dataOut.data(driverID).dY',8);
 
-    driverData(driverID).p0 = p0;
+    P_GT = dataOut.data(driverID).P_GT;
+    driverData.p0 = P_GT(19);
     
     %% solution 1: linear regression
-    thd = 0.25;
-    leftCurveIndeces = mean(U') >= thd;
-    rightCurveIndeces = mean(U') <= -thd;
-    
-    U_left = U(leftCurveIndeces,:);
-    dY_left = dY(leftCurveIndeces,:);
-    U_right = U(rightCurveIndeces,:);
-    dY_right = dY(rightCurveIndeces,:);
     
     % restructure data
-    [U_left, dY_left] = dataRestructure (U_left, dY_left, "random");
-    [U_right, dY_right] = dataRestructure (U_right, dY_right, "random");
-
-    if (config.USE_SYNTHETIC_DATA)
-        % produce synthetic data out of the driver data
-        [U_left, dY_left] = createSyntheticData (U_left, dY_left, "randomProportional", 0.1);
-        [U_right, dY_right] = createSyntheticData (U_right, dY_right, "randomProportional", 0.1);
+    if (config.DATA_RESTRUCTURE)
+        [U_left, dY_left] = dataRestructure (U_left, dY_left, "random");
+        [U_right, dY_right] = dataRestructure (U_right, dY_right, "random");
     end
     
     tic;
-    P_LDM_left = inv(U_left'*U_left)*U_left'*dY_left(:,:);
-    driverData(driverID).data(1).MA.dt = toc;
-    driverData(driverID).data(2).MA.dt = driverData(driverID).data(1).MA.dt;
+    P_LDM_left = reshape(P_GT(1:9), 3,3);
+    
+    driverData.data(1).MA.dt = toc;
+    driverData.data(2).MA.dt = driverData.data(1).MA.dt;
 
-    P_LDM_right = inv(U_right'*U_right)*U_right'*dY_right(:,:);
+    P_LDM_right = reshape(P_GT(10:18), 3,3);
+    clear P_GT;
 
     for side=1:2
         global U dY P_posterior0 P_LDM
@@ -370,70 +201,7 @@ function driverData = estimateParameters(drivers, parameters_out, config)
             dY = dY_right;
             token = 'right';
         end
-    
-        %% solution 1
-        % NLMS
-
-        [xNlmsCons,fNlmsCons] = fmincon(@maxNrmsNlms, [0.5, 1], [],[],[],[],[0,0],[inf, inf], []);
         
-        % initialize state
-        p_pred = zeros(3,3); %reshape(estimateInitialParameters(U, dY), 3,3);
-        
-        q = xNlmsCons(1);
-        Bias = xNlmsCons(2);
-        
-        for i=1:size(U,1)
-            hold off;
-            tic;
-            % prediction
-            y_pred = p_pred'*U(i,:)';
-            % regression matrix
-            Q = diag(q);
-            K = q*U(i,:)';
-            % normalized regression matrix
-            K = K/(U(i,:)*U(i,:)'+Bias);
-            y_error = dY(i,:)'-y_pred;
-        
-            p_pred = p_pred + K*y_error';
-
-            dtNlms(i) = toc;
-
-            parameters_nlms(i,:) = reshape(p_pred,1,9);
-        
-            NLMS(i,:,:) = p_pred;
-        
-            nrms(i) = sqrt(1/9*sum(sum((p_pred-P_LDM).^2)))/(max(max(P_LDM))-min(min(P_LDM)));
-        end
-
-        % LMS
-        [xLmsCons,fLmsCons] = fmincon(@maxNrmsLms, 0.5, [],[],[],[],0,inf, []);
-        
-        % initialize state
-        p_pred = zeros(3,3); %reshape(estimateInitialParameters(U, dY), 3,3);
-        
-        qLms = xLmsCons(1);
-        
-        for i=1:size(U,1)
-            hold off;
-            tic;
-            % prediction
-            y_pred = p_pred'*U(i,:)';
-            % regression matrix
-            K = qLms*U(i,:)';
-            y_error = dY(i,:)'-y_pred;
-        
-            p_pred = p_pred + K*y_error';
-
-            dtLms(i) = toc;
-
-            parameters_lms(i,:) = reshape(p_pred,1,9);
-        
-            LMS(i,:,:) = p_pred;
-        
-            nrmsLms(i) = sqrt(1/9*sum(sum((p_pred-P_LDM).^2)))/(max(max(P_LDM))-min(min(P_LDM)));
-        end
-        
-        %% solution 2
         % EKF estimator
         % optimization
 
@@ -481,7 +249,12 @@ function driverData = estimateParameters(drivers, parameters_out, config)
             Yerror = dY(i,:)'-H*x_posterior;
             L = L+log(det(sigma_yy))+Yerror'*inv(sigma_yy)*Yerror;
                 
-            P_GT = inv(U(1:i,:)'*U(1:i,:))*U(1:i,:)'*dY(1:i,:);
+            P_GT = functional_driverModelLearning(U(1:i,:), dY(1:i,:), 8); %inv(U(1:i,:)'*U(1:i,:))*U(1:i,:)'*dY(1:i,:); 
+            if (side==1)
+                P_GT = reshape(P_GT(1:9),3,3);
+            else
+                P_GT = reshape(P_GT(10:18),3,3);
+            end
     
             P_est = [x_posterior(4:6) x_posterior(7:9) x_posterior(10:12)];
     
@@ -502,8 +275,6 @@ function driverData = estimateParameters(drivers, parameters_out, config)
             hold on;
             plot(reshape(P_GT,9,1), 'color', 'b', 'Marker', 'o', 'DisplayName','$P_{est,MA}^{x,1}$', 'MarkerSize', 10);
             plot(x_posterior(4:12), 'color', 'r', 'Marker', 'x', 'DisplayName','$P_{est,EKF}^{x,1}$', 'MarkerSize', 10);
-            plot(reshape(NLMS(end,:,:), 9,1), 'color', 'm', 'Marker', '*', 'DisplayName','$P_{est,NLMS}^{x,1}$', 'MarkerSize', 10);
-            plot(reshape(LMS(end,:,:), 9,1), 'color', 'g', 'Marker', '*', 'DisplayName','$P_{est,LMS}^{x,1}$', 'MarkerSize', 10);
             grid on;
             xticks([0,1,2,3,4,5,6,7,8,9,10]);
             xticklabels(["", strcat("$P_{",token,"}^{1,1}$"), strcat("$P_{",token,"}^{2,1}$"), strcat("$P_{",token,"}^{3,1}$"), ...
@@ -518,8 +289,6 @@ function driverData = estimateParameters(drivers, parameters_out, config)
             subplot(2,1,2);
             plot(movmean(eL2_moving_LDM,20), "DisplayName", 'NRMS($\Delta P_{MA}^{GT}$)', 'color', 'b', 'LineWidth',2); hold on;
             plot(movmean(eL2_post_LDM,20), "DisplayName", 'NRMS($\Delta P_{est,EKF}^{GT}$)', 'color', 'r', 'LineWidth',2);
-            plot(movmean(nrms,20), "DisplayName", 'NRMS($\Delta P_{est,NLMS}^{GT}$)', 'color', 'm', 'LineWidth',2);
-            plot(movmean(nrmsLms,20), "DisplayName", 'NRMS($\Delta P_{est,LMS}^{GT}$)', 'color', 'g', 'LineWidth',2);
     
             grid on;
             title(strcat('\textbf{NRMS value of error between parameters - $P_{', token, '}$}'), 'FontSize', 14);
@@ -533,98 +302,28 @@ function driverData = estimateParameters(drivers, parameters_out, config)
             set(gca,'FontSize',12);
             xlim([0, length(eL2_post_LDM)]);
     
-            savefig(f, fullfile("C:\git\KDP_Igneczi\publikációk\MOST_2024\figures",...
-                        strcat('Estimation_', 'Driver_', num2str(driver),'_side_', token, '.fig')));
-            saveas(f, fullfile("C:\git\KDP_Igneczi\publikációk\MOST_2024\figures",...
-                            strcat('Estimation_', 'Driver_', num2str(driver),'_side_', token, '.png')));
+            savefig(f, fullfile("../../_temp/plots",...
+                        strcat('Estimation_', 'Driver_', num2str(driverID),'_side_', token, '.fig')));
+            saveas(f, fullfile("../../_temp/plots",...
+                            strcat('Estimation_', 'Driver_', num2str(driverID),'_side_', token, '.png')));
             close(f);
         end  
-        driverData(driverID).data(side).EKF.maxLogLikelihood = L;
-        driverData(driverID).data(side).EKF.terminalError = eL2_post_LDM(end);
-        driverData(driverID).data(side).EKF.parameters = [ry, sy, sp];
-        driverData(driverID).data(side).EKF.initValues.x0 = x0;
-        driverData(driverID).data(side).EKF.initValues.P0 = P_posterior0;
-        driverData(driverID).data(side).EKF.eL2 = eL2_post_LDM;
-        driverData(driverID).data(side).EKF.Pest = x_posterior(4:12);
-        driverData(driverID).data(side).NLMS.eL2 = nrms;
-        driverData(driverID).data(side).MA.eL2 = eL2_moving_LDM;
-        driverData(driverID).data(side).MA.Pest = P_GT;
-        driverData(driverID).data(side).GT.Pest = P_LDM;
-        driverData(driverID).data(side).NLMS.Pest = NLMS(end,:,:);
-        driverData(driverID).data(side).NLMS.terminalError = nrms(end);
-        driverData(driverID).data(side).NLMS.parameters = [q, Bias];
-        driverData(driverID).data(side).LMS.Pest = LMS(end,:,:);
-        driverData(driverID).data(side).LMS.terminalError = nrmsLms(end);
-        driverData(driverID).data(side).LMS.parameters = qLms;
-        driverData(driverID).data(side).LMS.eL2 = nrmsLms;
-        driverData(driverID).data(side).EKF.output = parameters;
-        driverData(driverID).data(side).EKF.dt = dtEkf;
-        driverData(driverID).data(side).LMS.dt = dtLms;
-        driverData(driverID).data(side).NLMS.dt = dtNlms;
-        driverData(driverID).data(side).NLMS.output = parameters_nlms;
+        driverData.data(side).EKF.maxLogLikelihood = L;
+        driverData.data(side).EKF.terminalError = eL2_post_LDM(end);
+        driverData.data(side).EKF.parameters = [ry, sy, sp];
+        driverData.data(side).EKF.initValues.x0 = x0;
+        driverData.data(side).EKF.initValues.P0 = P_posterior0;
+        driverData.data(side).EKF.eL2 = eL2_post_LDM;
+        driverData.data(side).EKF.Pest = x_posterior(4:12);
+        driverData.data(side).MA.eL2 = eL2_moving_LDM;
+        driverData.data(side).MA.Pest = P_GT;
+        driverData.data(side).GT.Pest = P_LDM;
+        driverData.data(side).EKF.output = parameters;
+        driverData.data(side).EKF.dt = dtEkf;
 
         clear eL2_moving_LDM eL2_post_LDM NLMS LMS nrms nrmsLms parameters parameters_nlms dtEkf dtLms dtNlms
     end % end of side separation
-    end % end of driver loop
 end
-
-function f = maxNrmsNlms(x0)
-global U dY P_LDM
-    % NLMS
-    % initialize state
-    p_pred = reshape(estimateInitialParameters(U, dY), 3,3);
-    
-    q = x0(1);
-    Bias = x0(2);
-    L = 0;
-    
-    for i=1:size(U,1)
-        hold off;
-        % prediction
-        y_pred = p_pred'*U(i,:)';
-        % regression matrix
-        K = q*U(i,:)';
-        % normalized regression matrix
-        K = K/(U(i,:)*U(i,:)'+Bias);
-        y_error = dY(i,:)'-y_pred;
-    
-        p_pred = p_pred + K*y_error';
-       
-        nrms(i) = sqrt(1/9*sum(sum((p_pred-P_LDM).^2)))/(max(max(P_LDM))-min(min(P_LDM)));
-    end
-    % non linear function - sigmoid
-    x = linspace(-10,10, length(nrms));
-    sigm = 50./(1+exp(-x))+0.1;
-    f = sum(sigm.*nrms);
-end
-
-function f = maxNrmsLms(x0)
-global U dY P_LDM
-    % LMS
-    % initialize state
-    p_pred = reshape(estimateInitialParameters(U, dY), 3,3);
-    
-    q = x0(1);
-    
-    for i=1:size(U,1)
-        hold off;
-        % prediction
-        y_pred = p_pred'*U(i,:)';
-        % regression matrix
-        K = q*U(i,:)';
-        y_error = dY(i,:)'-y_pred;
-        Y_error(i,:) = y_error';
-    
-        p_pred = p_pred + K*y_error';
-       
-        nrms(i) = sqrt(1/9*sum(sum((p_pred-P_LDM).^2)))/(max(max(P_LDM))-min(min(P_LDM)));
-    end
-    % non linear function - sigmoid
-    x = linspace(-10,10, length(nrms));
-    sigm = 50./(1+exp(-x))+0.1;
-    f = sum(sigm.*nrms);
-end
-
 
 function f = maxLogLikelihood(x0)
 global U dY P_posterior0 P_LDM
