@@ -135,6 +135,8 @@ function [segment, segment_m, indexes] = prepareInputForPlanner(segment)
     indexes.X_abs_mod = size(segment_m,2);
     segment_m(:,end+1) = modifiedReference(:,2);
     indexes.Y_abs_mod = size(segment_m,2);
+    segment_m(:,end+1) = c0_filtered;
+    indexes.c0_filtered = size(segment_m,2);
 
 end
 

@@ -1,4 +1,4 @@
-function evaluator_fullDriverModel(segments,config)
+plafunction evaluator_fullDriverModel(segments,config)
 SIMULATION_MODE = "PARAMETER_VALIDATION_FROM_FILE";
 global segment_m indexes globalStartIndex globalStopIndex vehicleState parameters metadata corFine net refFine modelID nrmsLoss nrmsLossManual dts modelMode
 
@@ -9,6 +9,7 @@ global segment_m indexes globalStartIndex globalStopIndex vehicleState parameter
 
 parameters.P_npDistances = [0.04, 0.116, 0.388];
 parameters.numberOfNodePoints = 3;
+parameters.drID = 11;
 %parameters.P_ELDM = reshape([2.86078399132926;0.884814215672794;-1.90657794718284;-3.09943416608130;-0.665457759838954;2.30236448840005;0.348462602099426;-0.107035325513227;-0.271014703397729;1.07959046302992;-0.775251579323662;-0.252977961446196;-0.822164501814478;1.36747233514778;0.113183483561418;-0.124241139196637;-0.454142531428492;0.293625990988783;-0.000983031283019174;-0.000983031283019174;-0.000983031283019174], 3,7);
 parameters.P_ELDM = zeros(3,7);
 parameters.P_replanCycle = 10;
@@ -27,18 +28,103 @@ parameters.vehicleParameters.rho_air = 1;
 parameters.vehicleParameters.lf = 1; 
 parameters.vehicleParameters.lr = 1.5; 
 
+PARAMS.MAXIMUM_INPUT_SIZE = 15000; % before snipetting and normalization
+PARAMS.KERNEL_TYPE = "{'covSum', {'covSEard', {'covPPard',3}}}";
+PARAMS.RATIO_OF_TRAIN_VS_TOTAL = 0.7;
+PARAMS.MAXIMUM_PREVIEW_DISTANCE = 150; % from within preview information is extracted, unit: m
+PARAMS.OUTPUT_STEP_DISTANCE = 10; % in meters
+PARAMS.NUMBER_OF_PREVIEW_INFORMATION = 2; % maximum number
+PARAMS.OUTPUT_SHIFT = linspace(15,PARAMS.MAXIMUM_PREVIEW_DISTANCE,10); %10:OUTPUT_STEP_DISTANCE:MAXIMUM_PREVIEW_DISTANCE; % preview distance is divided into sections where the output will be predicted
+PARAMS.EPOCH_CALCULATION = true;
+PARAMS.EPOCH_NUMBER = 10;
+PARAMS.GREEDY_REDUCTION = true;
+PARAMS.LDM_NP = [10, 39, 136];
+PARAMS.DriverID = 7;
+
+parameters.PARAMS = PARAMS;
+
 switch SIMULATION_MODE
     case "SINGLE_SIMULATION"
-        modelID = "groundTruth";
+        modelID = "gp";
         modelMode = "kinematic";
-        segment = segments.segments(1).segment;
+        load('C:\database\KDP_HLB_GP\Dr008_Dr023_input_GP.mat');
+        segment = segments.segments(PARAMS.DriverID).segment;
+        name = segments.segments(PARAMS.DriverID).name;
+        %segment = segments.segments(1).segment;
         [~, segment_m, indexes] = prepareInputForPlanner(segment);
+        segment_m(abs(segment_m(:,indexes.LaneOrientation))>0.05,indexes.LaneOrientation) = 0;
+
+        [~, ~, inputRaw, outputRaw, parameters.PARAMS.c_out, parameters.PARAMS.s_out, parameters.PARAMS.c, parameters.PARAMS.s] = prepareData(segment_m, indexes, parameters.PARAMS);
+        
+        if (modelID=="gp")
+            [estimation, deviation] = gpGenerateEstimate(segment_m, indexes);
+            segment_m(:,end+1:end+10) = estimation;
+            indexes.GP_1 = size(segment_m,2)-9;
+            indexes.GP_10 = size(segment_m,2);
+            segment_m(:,end+1:end+10) = deviation;
+            indexes.errGP_1 = size(segment_m,2)-9;
+            indexes.errGP_10 = size(segment_m,2);
+        end
         
         globalStartIndex = 2; % minimum is 2, otherwise it fails!
         globalStopIndex = size(segment_m,1);
-        
+
+        [path, U, dY, ~, intentionPath] = pathGeneration();
         corFine = corridorGeneration(0.5);
         refFine = referenceGeneration(0.5);
+
+        offsetPath = offsetCalculation(corFine, path);
+        offsetRef = offsetCalculation(corFine, refFine);
+
+        offsets{1}.offset = offsetPath; offsets{1}.name = 'GPM'; offsets{1}.X = path(:,1); offsets{1}.marker = 'r';
+
+        %% LRM
+        modelID = "lrm";
+        if (modelID=="lrm")
+            outputOffsetted = outputRaw-mean(mean(outputRaw));
+            for shiftID=1:numel(PARAMS.OUTPUT_SHIFT)                
+                P_LRM = outputOffsetted(:,shiftID)'*inputRaw*inv(inputRaw'*inputRaw);
+                segment_m(:,end+1) = inputRaw*P_LRM'+mean(mean(outputRaw));
+                if (shiftID==1)
+                    indexes.LRM_1 = size(segment_m,2);
+                elseif (shiftID==numel(PARAMS.OUTPUT_SHIFT))
+                    indexes.LRM_10 = size(segment_m,2);
+                end
+            end
+        end
+        [path, U, dY, ~, intentionPath] = pathGeneration();
+        offsetPath = offsetCalculation(corFine, path);
+        offsets{2}.offset = offsetPath; offsets{2}.name = 'LRM'; offsets{2}.X = path(:,1); offsets{2}.marker = 'b';
+      
+        %% Reference
+        modelID = "groundTruth";
+        path = pathGeneration();
+        offsetPath = offsetCalculation(corFine, path);
+        offsets{4}.offset = offsetPath; offsets{4}.name = 'Reference'; offsets{4}.X = path(:,1); offsets{4}.marker = 'k--';
+
+        %% Filtered reference
+        modelID = "groundTruthFiltered";
+        path = pathGeneration();
+        offsetPath = offsetCalculation(corFine, path);
+        offsets{5}.offset = offsetPath; offsets{5}.name = 'Reference filtered'; offsets{5}.X = path(:,1); offsets{5}.marker = 'k:';
+
+        %% ELDM
+        % read-in parameters 
+        data = load("C:\database\LDM_PARAMS\parametersAllDrivers.mat");
+        for j=1:length(data.parameters_out)
+            if (data.parameters_out(j).drID == parameters.drID)
+                parameters.P_ELDM = functional_driverModelLearning(data.parameters_out(j).U', data.parameters_out(j).dY' ,8);
+                break;
+            end
+        end
+        parameters.P_ELDM = [reshape(parameters.P_ELDM(1:18),3,6) ones(3,1)*parameters.P_ELDM(19)];
+        modelID = "eldm";
+        path = pathGeneration();
+        offsetPath = offsetCalculation(corFine, path);
+        offsets{3}.offset = offsetPath; offsets{3}.name = 'ELDM'; offsets{3}.X = path(:,1); offsets{3}.marker = 'g';
+
+        plot_offsetPlots(segment_m,indexes,offsets, PARAMS.DriverID);
+
     case "DATA_GENERATION"
         for i=1:length(segments.segments)
             segment = segments.segments(i).segment;
@@ -116,7 +202,7 @@ switch SIMULATION_MODE
         segment = segments.segments(1).segment;
         [~, segment_m, indexes] = prepareInputForPlanner(segment);
         
-        globalStartIndex = 2; % minimum is 2, otherwise it fails!
+        globalStartIndex =2; % minimum is 2, otherwise it fails!
         globalStopIndex = size(segment_m,1);
         
         corFine = corridorGeneration(0.5);
@@ -327,21 +413,43 @@ end
 
 function corFine = corridorGeneration(step)
     global segment_m indexes
-    if (numel(find((diff(segment_m(:,indexes.corrX)))>0))==0 && ...
-        numel(find((diff(segment_m(:,indexes.corrX)))<0))>0)
-        % monotonous decreasing
-        x_fine = segment_m(end,indexes.corrX):step:segment_m(1,indexes.corrX);
-    elseif (numel(find((diff(segment_m(:,indexes.corrX)))>0))>0 && ...
-        numel(find((diff(segment_m(:,indexes.corrX)))<0))==0)
-        % monotonous increasing
-        x_fine = segment_m(1,indexes.corrX):step:segment_m(end,indexes.corrX);
+    if (numel(find((diff(segment_m(:,indexes.corrX)))<0))>0)
+        if(numel(find((diff(segment_m(:,indexes.corrX)))>0))==0)
+            % monotonous decreasing
+            x_fine = segment_m(end,indexes.corrX):step:segment_m(1,indexes.corrX);
+            corrX = segment_m(:,indexes.corrX);
+            corrY = segment_m(:,indexes.corrY);
+        elseif(numel(find((diff(segment_m(:,indexes.corrX)))>0))<5)
+            x_fine = segment_m(end,indexes.corrX):step:segment_m(1,indexes.corrX);
+            corrX = segment_m(find((diff(segment_m(:,indexes.corrX)))<0),indexes.corrX);
+            corrY = segment_m(find((diff(segment_m(:,indexes.corrX)))<0),indexes.corrY);
+        else
+            x_fine=[];
+            corrX = segment_m(:,indexes.corrX);
+            corrY = segment_m(:,indexes.corrY);
+        end
+    elseif (numel(find((diff(segment_m(:,indexes.corrX)))>0))>0)
+        if(numel(find((diff(segment_m(:,indexes.corrX)))<0))==0)
+            % monotonous increasing
+            x_fine = segment_m(1,indexes.corrX):step:segment_m(end,indexes.corrX);
+            corrX = segment_m(:,indexes.corrX);
+            corrY = segment_m(:,indexes.corrY);
+        elseif (numel(find((diff(segment_m(:,indexes.corrX)))<0))<5)
+            x_fine = segment_m(1,indexes.corrX):step:segment_m(end,indexes.corrX);
+            corrX = segment_m(find((diff(segment_m(:,indexes.corrX)))>0),indexes.corrX);
+            corrY = segment_m(find((diff(segment_m(:,indexes.corrX)))>0),indexes.corrY);
+        else
+            x_fine = [];
+            corrX = segment_m(:,indexes.corrX);
+            corrY = segment_m(:,indexes.corrY);
+        end
     else
         %non-monotonous
         x_fine = [];
     end
     
     if (~isempty(x_fine))
-        y_fine = spline(segment_m(:,indexes.corrX), segment_m(:,indexes.corrY), x_fine');
+        y_fine = spline(corrX, corrY, x_fine');
         corFine = [x_fine' y_fine];
     else
         corFine = [];
@@ -404,7 +512,7 @@ function [path, U, dY, plannedPath, intentionPath, vehicleStateMemory] = pathGen
             nearestIndex = getNearestIndex(segment_m(:,indexes.X_abs),segment_m(:,indexes.Y_abs), [vehicleState.X vehicleState.Y]);        
             % cut scenario and corresponding information
             % -- parameter: info from past and future = window
-            window = [50 150];
+            window = [0 160];
             scenario = cutScenario(segment_m, indexes, nearestIndex, vehicleState, window);
             % Planner: incl. planning driver model, intended behavior
             % -- input: the scenario input data from the cutting
@@ -442,8 +550,13 @@ function [path, U, dY, plannedPath, intentionPath, vehicleStateMemory] = pathGen
                 vehicleState = loadModel(vehicleState);
                 vehicleState = speedController(vehicleState);
             end
- 
+
+            try
             vehicleState.steeringAngle = controller(posteriorPath, vehicleState); 
+            catch
+                i;
+            end
+
             % vehicle model
             vehicleState = vehicleModel(vehicleState, dT, modelMode, parameters.vehicleParameters);
             
@@ -785,15 +898,21 @@ function [priorPath, u, dy] = planner (scenario, indexes, previousPosteriorPath,
         case "eldm"
             [priorPath, u ,dy] = eldm (scenario, indexes, previousPosteriorPath, P_npDistances, parameters.P_ELDM);
         case "groundTruth"
-            [priorPath, u, dy] = groundTruth (scenario, indexes, previousPosteriorPath);
+            [priorPath, u, dy] = groundTruth (scenario, indexes, previousPosteriorPath,false);
+        case "groundTruthFiltered"
+            [priorPath, u, dy] = groundTruth (scenario, indexes, previousPosteriorPath, true);
         case "modifiedGroundTruth"
             [priorPath, u, dy] = modifiedGroundTruth (scenario, indexes, previousPosteriorPath);
+        case "gp"
+            [priorPath, u, dy] = gpModel (scenario, indexes, previousPosteriorPath);
+        case "lrm"
+            [priorPath, u, dy] = lrmModel (scenario, indexes, previousPosteriorPath);
         otherwise
             priorPath = [scenario(:,indexes.X_abs) scenario(:,indexes.Y_abs)];
     end
 end
 
-function [path, u, dy] = groundTruth (scenario, indexes, previousPath)
+function [path, u, dy] = groundTruth (scenario, indexes, previousPath, filtered)
     global parameters
     % This function calculates the node points in front of the vehicle,
     % then applies the driver model to calculate the offset to the
@@ -825,7 +944,11 @@ function [path, u, dy] = groundTruth (scenario, indexes, previousPath)
     corridorPlannerFrame = (corridorGlobalFrame-plannerFrame(1:2))*Tplanner';
     [indeces, ~] = nodePointModel(corridorPlannerFrame, parameters.P_npDistances);
     
-    referenceGlobalFrame = [scenario(nearestPoint(1,1):end,indexes.X_abs) scenario(nearestPoint(1,1):end,indexes.Y_abs)];
+    if(filtered)
+         referenceGlobalFrame = [scenario(nearestPoint(1,1):end,indexes.X_abs_mod) scenario(nearestPoint(1,1):end,indexes.Y_abs_mod)];
+    else
+         referenceGlobalFrame = [scenario(nearestPoint(1,1):end,indexes.X_abs) scenario(nearestPoint(1,1):end,indexes.Y_abs)];
+    end
     referencePlannerFrame = (referenceGlobalFrame-plannerFrame(1:2))*Tplanner';
     Y_reference = referencePlannerFrame(indeces(2:end),2);
     
@@ -863,6 +986,223 @@ function [path, u, dy] = groundTruth (scenario, indexes, previousPath)
     
     %% step 5: converting to global frame
     path = pathPlannerFrame*Tplanner + plannerFrame(1:2);
+end
+
+function [estimation, deviation] = gpGenerateEstimate(segment_m, indexes)
+global parameters
+    %% step 0: generate input data
+    [~, ~, inputRaw, outputRaw, c_out, s_out, c_in, s_in] = prepareData(segment_m, indexes, parameters.PARAMS);
+    
+    %% step 1: parameter loading
+    % read the learnt data from previous runs
+    pathToParams = "C:\git\KDP\publications\GP\results\gp_model";
+    paramGP = dir(fullfile(pathToParams,"ETA_input*"));
+    for fileID = 1:length(paramGP)
+        paramDriverID = str2num(paramGP(fileID).name(strfind(paramGP(fileID).name, 'driver_')+7:strfind(paramGP(fileID).name, '.')-1));
+        if (paramDriverID == parameters.PARAMS.DriverID)
+            paramData = load(fullfile(paramGP(fileID).folder, paramGP(fileID).name));
+            for npID=1:10
+                GP_params.hyp_opt_array{npID} = paramData.ETA(npID).hyp_opt;
+                GP_params.output_estimation{npID} = paramData.ETA(npID).output_estimation;
+                GP_params.input_estimation{npID} = paramData.ETA(npID).input_estimation;
+            end
+            break;
+        else
+            paramData = [];
+        end
+    end
+
+    %% step 3: norm and central
+    [inputResim, c, s] = normAndCentral(inputRaw);
+    [output, c, s] = normAndCentral(outputRaw);
+
+    %% step 4: generate output
+    meanfunc = [];       % Start with a zero mean prior
+    eval(strcat('covfunc = ',parameters.PARAMS.KERNEL_TYPE));    % Squared Exponental covariance function
+    % ID problem            
+    likfunc = @likGauss;    % Gaussian likelihood
+    for i = 1:length(GP_params.hyp_opt_array)
+        hyp = struct('mean', [], 'cov', 0, 'lik', -1);
+        hyp.cov = GP_params.hyp_opt_array{i};
+        [estimationGP(:,i), deviationGP(:,i)] = gp(hyp, @infGaussLik, meanfunc, covfunc, likfunc, GP_params.input_estimation{i}, GP_params.output_estimation{i}, inputResim); % extract the mean and covarance functions
+    end
+
+    %% step 5: node point calculation
+    for i=1:size(estimationGP,2)
+        estimation(:,i) = estimationGP(:,i)*s_out(i)+c_out(i);
+        deviation(:,i) = deviationGP(:,i)*s_out(i)+c_out(i);
+    end
+end
+
+function [path, u, dy] = gpModel (scenario, indexes, previousPath)
+    global parameters
+    % This function calculates the node points in front of the vehicle,
+    % then applies the driver model to calculate the offset to the
+    % mid-lane. Finally, a curve is fit onto the node points to result the
+    % final path. The entire planning happens in the global UTF frame
+    % Inputs:
+    % [1] scenario - array with all signals, cut for the planning horizon 
+    % [2] previous path - the previously planned trajectory, used for
+    % initializing the new trajectory
+    u = []; dy=[];
+
+    %% step 1: path planning
+    % finding the closest point in the scenario
+    distances = ((scenario(:,indexes.X_abs)-previousPath(end,1)).^2+...
+        (scenario(:,indexes.Y_abs) - previousPath(end,2)).^2).^0.5;
+    nearestPoint = find(distances == min(distances),1);
+    
+    % estimation of orientation:
+    if (size(previousPath,1) > 1)
+        theta0 = atan2((previousPath(end,2)-previousPath(end-1,2)),(previousPath(end,1)-previousPath(end-1,1)));
+    else
+        theta0 = scenario(nearestPoint(1,1), indexes.theta_calc);
+    end
+    plannerFrame = [previousPath(end,:) theta0];
+    Tplanner = [cos(theta0) sin(theta0); -sin(theta0) cos(theta0)];
+    
+    %% step 2: calculating the node points
+    % Node Point Model
+    corridorGlobalFrame = [scenario(nearestPoint(1,1):end,indexes.corrX) scenario(nearestPoint(1,1):end,indexes.corrY)];
+    corridorPlannerFrame = (corridorGlobalFrame-plannerFrame(1:2))*Tplanner';
+    [indeces, ~] = nodePointModel(corridorPlannerFrame, [parameters.PARAMS.OUTPUT_SHIFT(1) diff(parameters.PARAMS.OUTPUT_SHIFT)]/250);
+    
+    referenceGlobalFrame = [scenario(nearestPoint(1,1):end,indexes.X_abs) scenario(nearestPoint(1,1):end,indexes.Y_abs)];
+    referencePlannerFrame = (referenceGlobalFrame-plannerFrame(1:2))*Tplanner';
+    Y_reference = referencePlannerFrame(indeces(2:end),2);
+    
+    % nominal road points
+    X_nominal = corridorPlannerFrame(indeces(2:end),1);
+    Y_nominal = corridorPlannerFrame(indeces(2:end),2);
+    theta_nominal = scenario(indeces(2:end) + nearestPoint(1,1),indexes.LaneOrientation)+ ...
+        scenario(indeces(2:end) + nearestPoint(1,1),indexes.theta_calc)- ...
+        plannerFrame(3);
+    
+    % calculating final node points
+    Y = Y_nominal + scenario(1,indexes.GP_1:indexes.GP_10)'.*cos(theta_nominal);
+    X = X_nominal - scenario(1,indexes.GP_1:indexes.GP_10)'.*sin(theta_nominal);
+    theta = theta_nominal;
+    
+    % extending with origin of the planner frame
+    Y = [0; Y]; X = [0;X]; theta = [0; theta];
+    
+    %% step 4: curve fitting model
+    refX = corridorPlannerFrame(:,1)';
+    [pathPlannerFrame, ~] = trajectory_planner([X;Y;theta], indeces, refX',0);
+    
+    %% step 5: converting to global frame
+    path = pathPlannerFrame*Tplanner + plannerFrame(1:2);
+end
+
+function [path, u, dy] = lrmModel (scenario, indexes, previousPath)
+    global parameters
+    % This function calculates the node points in front of the vehicle,
+    % then applies the driver model to calculate the offset to the
+    % mid-lane. Finally, a curve is fit onto the node points to result the
+    % final path. The entire planning happens in the global UTF frame
+    % Inputs:
+    % [1] scenario - array with all signals, cut for the planning horizon 
+    % [2] previous path - the previously planned trajectory, used for
+    % initializing the new trajectory
+    u = []; dy=[];
+
+    %% step 1: path planning
+    % finding the closest point in the scenario
+    distances = ((scenario(:,indexes.X_abs)-previousPath(end,1)).^2+...
+        (scenario(:,indexes.Y_abs) - previousPath(end,2)).^2).^0.5;
+    nearestPoint = find(distances == min(distances),1);
+    
+    % estimation of orientation:
+    if (size(previousPath,1) > 1)
+        theta0 = atan2((previousPath(end,2)-previousPath(end-1,2)),(previousPath(end,1)-previousPath(end-1,1)));
+    else
+        theta0 = scenario(nearestPoint(1,1), indexes.theta_calc);
+    end
+    plannerFrame = [previousPath(end,:) theta0];
+    Tplanner = [cos(theta0) sin(theta0); -sin(theta0) cos(theta0)];
+    
+    %% step 2: calculating the node points
+    % Node Point Model
+    corridorGlobalFrame = [scenario(nearestPoint(1,1):end,indexes.corrX) scenario(nearestPoint(1,1):end,indexes.corrY)];
+    corridorPlannerFrame = (corridorGlobalFrame-plannerFrame(1:2))*Tplanner';
+    [indeces, ~] = nodePointModel(corridorPlannerFrame, [parameters.PARAMS.OUTPUT_SHIFT(1) diff(parameters.PARAMS.OUTPUT_SHIFT)]/250);
+    
+    referenceGlobalFrame = [scenario(nearestPoint(1,1):end,indexes.X_abs) scenario(nearestPoint(1,1):end,indexes.Y_abs)];
+    referencePlannerFrame = (referenceGlobalFrame-plannerFrame(1:2))*Tplanner';
+    Y_reference = referencePlannerFrame(indeces(2:end),2);
+    
+    % nominal road points
+    X_nominal = corridorPlannerFrame(indeces(2:end),1);
+    Y_nominal = corridorPlannerFrame(indeces(2:end),2);
+    theta_nominal = scenario(indeces(2:end) + nearestPoint(1,1),indexes.LaneOrientation)+ ...
+        scenario(indeces(2:end) + nearestPoint(1,1),indexes.theta_calc)- ...
+        plannerFrame(3);
+    
+    % calculating final node points
+    Y = Y_nominal + scenario(1,indexes.LRM_1:indexes.LRM_10)'.*cos(theta_nominal);
+    X = X_nominal - scenario(1,indexes.LRM_1:indexes.LRM_10)'.*sin(theta_nominal);
+    theta = theta_nominal;
+    
+    % extending with origin of the planner frame
+    Y = [0; Y]; X = [0;X]; theta = [0; theta];
+    
+    %% step 4: curve fitting model
+    refX = corridorPlannerFrame(:,1)';
+    [pathPlannerFrame, ~] = trajectory_planner([X;Y;theta], indeces, refX',0);
+    
+    %% step 5: converting to global frame
+    path = pathPlannerFrame*Tplanner + plannerFrame(1:2);
+end
+
+function [input, output, inputRaw, outputRaw, c_out, s_out, c_in, s_in] = prepareData(segment_m, indexes, PARAMS)
+     % input array
+     input = [segment_m(:, indexes.OncomingVehicleTimeToPass), ...
+        segment_m(:, indexes.VelocityX), ...
+        movmean(segment_m(:, indexes.AccelerationX),20), ...
+        movmean(segment_m(:, indexes.YawRate),20), ...
+        movmean(segment_m(:, indexes.LaneCurvature), 20), ...
+        movmean(segment_m(:, indexes.c3), 200)];
+    
+    % output array
+    output = zeros(size(input,1),numel(PARAMS.OUTPUT_SHIFT));
+    for shiftID=1:numel(PARAMS.OUTPUT_SHIFT)
+        dT = mean(diff(segment_m(:, indexes.Relative_time)));
+        dx = segment_m(:, indexes.VelocityX)*dT;        
+        shiftOnOutput = [1:1:size(segment_m(:,indexes.Relative_time),1)]'+floor(PARAMS.OUTPUT_SHIFT(shiftID)./dx);
+        for shiftIDonOutput=1:size(input,1)
+            if (shiftOnOutput(shiftIDonOutput) > size(input,1))
+                break;
+            else
+                output(shiftIDonOutput,shiftID) = -segment_m(shiftOnOutput(shiftIDonOutput), indexes.c0);
+            end
+        end
+    end
+    
+    inputRaw = input;
+    outputRaw = output;
+    
+    % SHUFFLE
+    N = size(input,1);
+    shuffledIndeces = randperm(N);
+    input = input(shuffledIndeces,:);
+    output = output(shuffledIndeces, :);
+
+    % LIMIT DATA IF NEEDED
+    % this is done before norm and central
+    input = input(1:min(size(input,1),PARAMS.MAXIMUM_INPUT_SIZE),:);
+    output = output(1:min(size(input,1),PARAMS.MAXIMUM_INPUT_SIZE), :);
+
+    % NORM AND CENTRAL
+    [output, c_out, s_out] = normAndCentral(output);
+    [input, c_in, s_in] = normAndCentral(input);
+end
+
+function [dataOut, c,s]= normAndCentral(dataIn)
+    for i=1:size(dataIn,2)
+        c(i) = mean(dataIn(:,i));
+        s(i) = std(dataIn(:,i));
+        dataOut(:,i) = (dataIn(:,i)-mean(dataIn(:,i)))/std(dataIn(:,i));
+    end
 end
 
 function [path, u, dy] = modifiedGroundTruth (scenario, indexes, previousPath)

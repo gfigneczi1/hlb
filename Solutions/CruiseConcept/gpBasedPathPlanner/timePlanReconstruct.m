@@ -27,7 +27,7 @@ set(0,'DefaultFigureVisible','off');
 shiftOnOutputSelection = PARAMS.OUTPUT_SHIFT;  %shift the offset in time (positive means shift forward)
 p = PARAMS.RATIO_OF_TRAIN_VS_TOTAL; %percentage of evaluation data from entire dataset
 
-for driverID = 1:size(segments.segments,2)
+for driverID = 7:size(segments.segments,2)
     DRIVER_ID_IF_NOT_MERGED = driverID;
     segment = segments.segments(DRIVER_ID_IF_NOT_MERGED).segment;
     name = segments.segments(DRIVER_ID_IF_NOT_MERGED).name;
@@ -103,11 +103,11 @@ for driverID = 1:size(segments.segments,2)
             straightBoundingBoxes(1:2:end) = [1; find(diff(straightSections) > 0)];
         elseif (straightSections(end))
             % end with straight
-            straightBoundingBoxes(2:2:end) = find(diff(straightSections) < 0);
+            straightBoundingBoxes(2:2:end) = [find(diff(straightSections) < 0); size(segment_m,1)];
             straightBoundingBoxes(1:2:end) = [find(diff(straightSections) > 0)];
         else
-            straightBoundingBoxes(1:2:end) = find(diff(straightSections) > 0);
-            straightBoundingBoxes(2:2:end) = find(diff(straightSections) < 0);
+            straightBoundingBoxes(1:2:end-1) = find(diff(straightSections) > 0);
+            straightBoundingBoxes(2:2:end-1) = find(diff(straightSections) < 0);
         end
 
         confidenceBounds = [estimationGP{i}+2*sqrt(deviationGP{i}); flip(estimationGP{i}-2*sqrt(deviationGP{i}),1)];
@@ -124,7 +124,7 @@ for driverID = 1:size(segments.segments,2)
         end
         plot(X_abs, estimationGP{i}*s_out(i)+c_out(i), 'color', 'r',  'LineWidth', 2, 'DisplayName', 'GP');
         plot(X_abs, estimationLRM{i}*s_out(i)+c_out(i), 'color', 'b',  'LineWidth', 2, 'DisplayName', 'LRM');
-        plot(X_abs(1:length(estimationLDM{i})), estimationLDM{i}, 'color', 'g',  'LineWidth', 2, 'DisplayName', 'LDM');
+        plot(X_abs(1:length(estimationLDM{i})), estimationLDM{i}, 'color', 'g',  'LineWidth', 2, 'DisplayName', 'ELDM');
         plot(X_abs, outputRaw(:,i), 'color', 'k', 'LineStyle', '--', 'LineWidth', 2, 'DisplayName', 'Reference');
         xlabel('X-UTM(m)'); ylabel("$\delta(m)$");
         yline(0, "HandleVisibility","off", 'Alpha',0.3, 'Color','k', 'LineWidth',3);
@@ -136,7 +136,7 @@ for driverID = 1:size(segments.segments,2)
         title(strcat("Estimation of $\delta_1$ - Driver", {' '}, num2str(driverID)));
 
         subplot(3,1,2);
-        plot(X_abs, segment_m(:,indexes.LaneCurvature)*2, 'LineWidth', 2, 'color', 'k');
+        plot(X_abs, segment_m(:,indexes.LaneCurvature), 'LineWidth', 2, 'color', 'k');
         grid on; hold on;
         for j=1:length(straightBoundingBoxes)/2
             if (j==1)
@@ -224,8 +224,13 @@ function [estimationGP, deviationGP, estimationLRM, estimationLDM] = resimulateT
         end
         input_loc(i,:) = [mean(inputRaw(i:np1,5)) mean(inputRaw(np1:np2,5)) mean(inputRaw(np2:np3,5))];
     end
-    for i=1:length(LDM_params.P_array)
-        estimationLDM{i} = input_loc*LDM_params.P_array{i}'+LDM_params.delta_0;
+    leftCurves = mean(input_loc') >= 2.5e-4;
+    rightCurves = mean(input_loc') <= -2.5e-4;
+    inputLeft = input_loc; inputLeft(~leftCurves,:) = 0;
+    inputRight = input_loc; inputRight(~rightCurves,:) = 0;
+
+    for i=1:length(LDM_params.P_array)/2
+        estimationLDM{i} = inputLeft/0.001*LDM_params.P_array{i}+inputRight/0.001*LDM_params.P_array{i+3}+LDM_params.delta_0;
     end
 end
 
@@ -293,6 +298,7 @@ function [P_array, delta_0] = trainLDM(input, output, PARAMS)
 % with necessary data
 dT = 0.05;
 ds = input(:,2)*dT;
+output = movmean(output,180);
 delta_0 = mean(output(:,1));
 for i=1:size(input,1)
     S = cumsum(ds(i:end));
@@ -302,16 +308,22 @@ for i=1:size(input,1)
     if (isempty(np3))
         break;
     end
-    try
-        input_loc(i,:) = [mean(input(i:np1,5)) mean(input(np1:np2,5)) mean(input(np2:np3,5))];
-    catch
-        i;
-    end
+    input_loc(i,:) = [mean(input(i:np1,5)) mean(input(np1:np2,5)) mean(input(np2:np3,5))];
     output_loc(i,:) = output([np1, np2, np3],1)-delta_0;
 end
-P_array{1} = output_loc(:,1)'*input_loc*inv(input_loc'*input_loc);
-P_array{2} = output_loc(:,2)'*input_loc*inv(input_loc'*input_loc);
-P_array{3} = output_loc(:,3)'*input_loc*inv(input_loc'*input_loc);
+P = functional_driverModelLearning(input_loc/0.001, output_loc ,8);
+delta_0 = P(19);
+P = reshape(P(1:18),3,6);
+
+P_array{1} = P(:,1);
+P_array{2} = P(:,2);
+P_array{3} = P(:,3);
+P_array{4} = P(:,4);
+P_array{5} = P(:,5);
+P_array{6} = P(:,6);
+
+% P_array{2} = output_loc(:,2)'*input_loc*inv(input_loc'*input_loc);
+% P_array{3} = output_loc(:,3)'*input_loc*inv(input_loc'*input_loc);
 
 end
 

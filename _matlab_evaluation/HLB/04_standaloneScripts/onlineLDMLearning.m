@@ -3,6 +3,39 @@ clear;
 
 pathData = "C:\git\hlb\_temp\plots\dataOut.mat";
 load(pathData);
+discPath = "C:\git\KDP\HLB_for_AV_MotionControl\02_Results\MassMeasurements\DISC_summary.xlsx";
+disc = readtable(discPath);
+
+%% PCA plot
+Pcent = [];
+for i=1:length(dataOut.Pcentroids)
+    Pcent = [Pcent dataOut.Pcentroids{i}];
+end
+Pdr = [];
+for i=1:length(dataOut.data)
+    Pdr = [Pdr dataOut.data(i).P_GT];
+end
+%% DISC plot
+% conversion of disc params to +/-1 range X+: B, X-: R, Y+: G, Y-:Y
+for i=1:size(disc,1)
+    discTransformed(i,:) = [mean([disc.B(i)/25, -disc.R(i)/25]), mean([disc.G(i)/25, -disc.Y(i)/25])];
+    plot(discTransformed(i,1), discTransformed(i,2), 'o', 'DisplayName', strcat("Dr", num2str(disc.DrID(i))), 'LineStyle', 'none'); hold on;
+end
+xlim([-1,1]);
+ylim([-1,1]);
+xline(0, 'HandleVisibility','off', 'LineWidth',2);
+yline(0, 'HandleVisibility','off', 'LineWidth',2);
+legend;
+grid on;
+
+%% clusters plot
+for j=1:length(dataOut.Pcentroids)-1
+    for k=j+1:length(dataOut.Pcentroids)
+        delta(j,k) = sqrt(sum((dataOut.Pcentroids{j}-dataOut.Pcentroids{k}).^2)/length(dataOut.Pcentroids{k}));
+    end
+end
+delta = delta/max(max(delta));
+
 
 set(0,'defaulttextInterpreter','latex') ;
 
