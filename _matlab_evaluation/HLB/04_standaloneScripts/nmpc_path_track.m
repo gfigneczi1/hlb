@@ -1,11 +1,11 @@
 clear; close all;
 
-global modelID;
+global modelID path
 modelID = "eldm";
 
 path = load("C:\git\hlb\Solutions\CruiseConcept\modelPredictiveControl\31_south_map.mat");
 path = path.traj_local;
-path = path(200:end,:);
+path = path(190:end,:);
 orientation = diff(path(:,2))./diff(path(:,1));
 orientation = [orientation; orientation(end)];
 orientation = atan(movmean(orientation,25));
@@ -23,45 +23,50 @@ indexes.corrX = 1;
 indexes.corrY = 2;
 indexes.LaneCurvature = 5;
 
-GENERATE_MAP_PLOTS = false;
+GENERATE_MAP_PLOTS = true;
 
-global x0 parameters yRefVectorGlobal orientationRefVectorGlobal map
+possible_alfa_dy = 1;
+possible_theta_dy = linspace(0,10,20);
+possible_kappa = linspace(0,1,20);
+
+global x0 parameters yRefVectorGlobal orientationRefVectorGlobal map priorPath 
 parameters.Tsolve = 0.02; % only relevant when self-implemented solver is used
-parameters.vx = 20; % m/s
-parameters.Calfa_f = 100000; % * 180/pi(); % N/rad
-parameters.Calfa_r = 100000; % * 180/pi(); % N/rad based on: https://www.google.com/url?sa=i&url=https%3A%2F%2Fwww.researchgate.net%2Ffigure%2FTire-Lateral-Force-vs-Slip-Angle-DOE-parameters_fig3_224323050&psig=AOvVaw2govbGsiWN6YjtVXFHzPqx&ust=1706344971038000&source=images&cd=vfe&opi=89978449&ved=0CBIQjRxqFwoTCNDd-8TU-oMDFQAAAAAdAAAAABAD
+parameters.vx = 17; % m/s
+parameters.Calfa_f = 10000; % * 180/pi(); % N/rad
+parameters.Calfa_r = 10000; % * 180/pi(); % N/rad based on: https://www.google.com/url?sa=i&url=https%3A%2F%2Fwww.researchgate.net%2Ffigure%2FTire-Lateral-Force-vs-Slip-Angle-DOE-parameters_fig3_224323050&psig=AOvVaw2govbGsiWN6YjtVXFHzPqx&ust=1706344971038000&source=images&cd=vfe&opi=89978449&ved=0CBIQjRxqFwoTCNDd-8TU-oMDFQAAAAAdAAAAABAD
 
 parameters.Lr = 1.8; % m
 parameters.Lf = 1.2; % m
 parameters.m = 1500; % kg
 parameters.Iz = 2000; % kg*m^2
 
-parameters.alfa = [1 0; 0 0.1];
-parameters.kappa = 0.1;
-parameters.beta = 0.1;
+parameters.alfa = [2 0; 0 0];
+parameters.kappa = 0.000;
+parameters.beta = 0.0;
 parameters.Sresidual = 0.0;
 
 parameters.Th = 6;
-parameters.Np = 10;
+parameters.Np = 20;
 parameters.umax = 3*pi()/180; % absolute max road-wheel angle
 
 parameters.costMode = "normal";
-parameters.modelMode = "dynamic";
+parameters.modelMode = "kinematic";
 
 % planner
 parameters.P_npDistances = [0.04, 0.116, 0.388];
 parameters.P_ELDM = [0.39 0.24 0.12 -0.23 -0.39 -0.18 0.07; ...
     -0.39 -0.2 -0.1 0.43 0.6 0.18 0.07; ...
     0.08 0.04 0.07 -0.18 -0.18 0.03 0.07];
-parameters.P_ELDM = zeros(3,7);
+%parameters.P_ELDM = zeros(3,7);
     
 Ts = 0.02;
+
 U = zeros(1,parameters.Np);
 
-T = 50;
+T = 35;
 N = T/Ts;
 Td = parameters.Th/parameters.Np;
-t_delaySteering = 0;
+t_delaySteering = 2*Td;
 
 options = optimoptions('fmincon','Display','iter','Algorithm','sqp');
 
@@ -81,9 +86,10 @@ elseif (parameters.modelMode == "kinematic")
     vehicleState.theta = x_k(3);
 end
 x_k0 = x_k;
+x_saved(1:2,:) = [x_k0'; x_k0'];
+u_saved(1,1) = 0;
 egoPath = [vehicleState.X vehicleState.Y];
 globalPosteriorPath = egoPath;
-
 % simulation loop
 for k=1:N
     
@@ -133,10 +139,10 @@ for k=1:N
                 T = [cos(x_k(3)) sin(x_k(3)); -sin(x_k(3)) cos(x_k(3))];
                 P = [x_k(1) x_k(2)];
             end
-            localPath = (path(:,1:2)-P)*T';
+            localPath = (priorPath(:,1:2)-P)*T';
             localDistances = (sum(localPath'.^2)).^0.5;
             endPoint = find(localDistances(1:end)>=xend,1);
-            xRefVector = linspace(0,xend, parameters.Np+1);
+            xRefVector = linspace(dx,xend, parameters.Np);
             yRefVector = spline(localPath(1:endPoint,1), localPath(1:endPoint,2), xRefVector);
             orientationRefVector = movmean(diff(yRefVector)./diff(xRefVector), 10);
             orientationRefVector = [orientationRefVector orientationRefVector(end)];
@@ -153,23 +159,30 @@ for k=1:N
         M = M+1;
         %[U, fval(M)] = fmincon(@objfunx, U, [], [], [], [], -parameters.umax*ones(1,parameters.Np), ones(1,parameters.Np)*parameters.umax);
         for o=1:1
-            [U, fval(M)] = fminsearch(@objfunx, U); 
+            [U, fval(M), exitFlag] = fminsearch(@objfunx2, U); 
         end
         x_k0 = x_k;
         for i=1:parameters.Np
             t_i = (i-1)*Td;
             u_i = mu(U, t_i);
-            x(:, i) = phi(t_i, U, x0);
+            if (i==1)
+                x(:,i) = kinematicSingleTrack(u_i, x_k, Td);
+            else
+                x(:,i) = kinematicSingleTrack(u_i, x(:,i-1), Td);
+            end
+            %x(:, i) = phi(t_i, U, x0);
         end 
     end
-    u_k = mu(U, t_k-(M-1)*Td+t_delaySteering); % receeding horizon, shifting with delay
+    u_k = mu(U, t_k-(M-1)*Td); % receeding horizon, shifting with dela
+    %u_k = 0.5*(mu(U, t_k-(M-1)*Td+Td)+mu(U, t_k-(M-1)*Td+2*Td));
     % saving for debugging
     u_saved(k) = u_k;
     x_saved(k,1:size(x_k,1)) = x_k';
     th_saved(k) = t_k-(M-1)*Td;
 
     % state update
-    x_k = F(x_k, u_k, Ts); 
+    %x_k = F(x_k, u_k, Ts); 
+    x_k = kinematicSingleTrack(u_k, x_k, Ts);
     if (parameters.modelMode == "dynamic")
         T = [cos(x_k(5)) sin(x_k(5)); -sin(x_k(5)) cos(x_k(5))];
     else
@@ -221,24 +234,23 @@ for k=1:N
     egoPath = [egoPath; [vehicleState.X vehicleState.Y]];
 
     clc;
-    fprintf("Iteration number %d / %d", k, N);
+    fprintf("Iteration number %d / %d\n", k, N);
 end
 
-
-
 function f = objfunx(U)
-    global x0 parameters yRefVectorGlobal map
+    global x0 parameters yRefVectorGlobal map priorPath path
     f = 0;
     t_k1 = 0;
     Td = parameters.Th/parameters.Np;
 
     for k=1:parameters.Np
-        t_k = (k-1)*Td;
+        t_k = k*Td;
         u_k = mu(U, t_k);
         f = f+l(phi(t_k, U, x0), u_k, t_k)*(t_k-t_k1);
         t_k1 = t_k;
         x(:, k) = phi(t_k, U, x0);
-    end    
+    end 
+    f = f/parameters.Th;
     f = f + S(phi(parameters.Th,U,x0), parameters.Th);
     
 %     if(parameters.costMode=="costMap")
@@ -250,12 +262,56 @@ function f = objfunx(U)
 %         hold on;
 %     end
 %     if (parameters.modelMode == "dynamic")
-%         plot(x(3,:), x(4,:), 'r', x(3,:), yRefVectorGlobal(1:end-1), 'k');
+%         plot(x(3,:), x(4,:), 'r', x(3,:), yRefVectorGlobal(1:end), 'k', priorPath(:,1), priorPath(:,2), 'g', path(:,1), path(:,2), 'k:', 'LineWidth',2);
 %     else
-%         plot(x(1,:), x(2,:), 'r', x(1,:), yRefVectorGlobal(1:end-1), 'k');
+%         plot(x(1,:), x(2,:), 'r', x(1,:), yRefVectorGlobal(1:end), 'k');
 %     end
 %     title(num2str(f));
+%     xlim([min(priorPath(:,1))-3, max(priorPath(:,1))+3]);
+%     ylim([min(priorPath(:,2))-3, max(priorPath(:,2))+3]);
 %     pause(0.05);
+end
+
+function f = objfunx2(U)
+global x0 parameters yRefVectorGlobal map priorPath path orientationRefVectorGlobal
+    
+    Td = parameters.Th/parameters.Np;
+    x_k = x0;
+    for k=1:parameters.Np
+        t_k = k*Td;
+        u_k = mu(U, t_k);
+        x_k = kinematicSingleTrack(u_k, x_k, Td);
+        x(:, k) = x_k;
+    end 
+    % output
+    y = [0 1 0; 0 0 1]*x;
+    % cost 
+    yref = [yRefVectorGlobal'; orientationRefVectorGlobal'];
+    f = 0;
+    for n=1:size(y,1)
+        yn = y(n,:); yrefn = yref(n,:);
+        f = f+(yn-yrefn)*parameters.alfa(n,n)*(yn-yrefn)';
+    end
+    f = f+U*parameters.kappa*U';
+    
+    if(parameters.costMode=="costMap")
+        hold off;
+        h = pcolor(map.X,map.Y,map.Z);
+        clim([0 1]); 
+        set(h,'LineStyle','none');
+        view(2);
+        hold on;
+    end
+    if (parameters.modelMode == "dynamic")
+        plot(x(3,:), x(4,:), 'r', x(3,:), yRefVectorGlobal(1:end), 'k', priorPath(:,1), priorPath(:,2), 'g', path(:,1), path(:,2), 'k:', 'LineWidth',2);
+    else
+        plot(x(1,:), x(2,:), 'r', x(1,:), yRefVectorGlobal(1:end), 'k', priorPath(:,1), priorPath(:,2), 'g', path(:,1), path(:,2), 'k:', 'LineWidth',2);
+    end
+    title(num2str(f));
+    xlim([min(x(1,:))-3, max(x(1,:))+3]);
+    ylim([min(x(2,:))-1, max(x(2,:))+1]);
+    pause(0.05);
+
 end
 
 function fl = l(x,u, t_k)
@@ -331,10 +387,10 @@ function y_err = calculateReference(t_k)
     else
     % n_act+1 in indexing is needed, as time starts from 0
     y_refCalculated = interp1([n_act*tPredStep, (n_act+1)*tPredStep], ...
-        [yRefVectorGlobal(n_act+1),yRefVectorGlobal(n_act+2)], ...
+        [yRefVectorGlobal(n_act),yRefVectorGlobal(n_act+1)], ...
         t_k);
     orientation_refCalculated = interp1([n_act*tPredStep, (n_act+1)*tPredStep], ...
-        [orientationRefVectorGlobal(n_act+1),orientationRefVectorGlobal(n_act+2)], ...
+        [orientationRefVectorGlobal(n_act),orientationRefVectorGlobal(n_act+1)], ...
         t_k);
     end
     y_err = [y_refCalculated; orientation_refCalculated];
@@ -470,4 +526,116 @@ function cost = kernelGaussian(x, sigma, mu)
     b = mu;
     c = sigma;
     cost = a*exp(-(x-b).^2/(2*c^2));
+end
+
+function U = lmpc(pathLocal, pathOrientation, Np, Nc, rw, q, L, Ts,  x_k1, xa, delta0, u_k1)
+%% INTRODUCTION
+% This function is the core MPC algorithm part.
+% created by Gergo Igneczi @ Vehicle Research Center of Szechenyi Istvan
+% University
+
+if (x_k1(3) < 3)
+    % speed is low, MPC will not work
+    u = 0;
+else
+    dim = 2; % number of outputs
+    % producing prediction matrices
+    pred_matrix = zeros(min(dim*Np,1000),1);
+
+    x_points = pathLocal(:,1);
+    y_points = pathLocal(:,2);
+
+    for i = 1:Np
+        %pred_matrix(dim*i-(dim-1),1) = x_points(i);
+        pred_matrix(dim*i-(dim-1),1) = y_points(i);
+        pred_matrix(dim*i-(dim-2),1) = pathOrientation(i);
+    end
+    Rs_rk = pred_matrix;
+
+    I = eye(min(Nc,1000));
+
+    %% initializing helper matrices
+    M = zeros(min(1000,2*size(u_k1,1)*Nc),min(2*Nc,1000));
+    for (i=1:2*size(u_k1,1)*Nc)
+        if (i<=(Nc))
+            k=1;
+            while ((2*k-1)/2 <= i)
+                M (i,2*k-1) = 1;
+                k = k + 1;
+            end
+        elseif (i <=(Nc*2))
+            k=1;
+            while ((2*k-1)/2 <= i-Nc)
+                M (i,2*k-1) = -1;
+                k = k + 1;
+            end
+        elseif (i<=(Nc*3))
+            k=1;
+            while (2*k/2 <= i-size(x_k1,1)*Nc/2)
+                M (i,2*k) = 1;
+                k = k+1;
+            end
+        else
+            k=1;
+            while (2*k/2 <= i-size(x_k1,1)*Nc/2-Nc)
+                M (i,2*k) = -1;
+                k = k+1;
+            end
+        end
+    end
+
+
+    %% updating state matrices
+    Ad = [1 0 Ts 0 0; 0 1 0 Ts 0; 0 0 1 0 -Ts/L*x_k1(3)^2*tan(delta0); 0 0 0 1 0; 0 0 0 0 1];
+    Bd = [0 0 0 Ts/L*x_k1(3)^2*1/(cos(delta0))^2 Ts/L*x_k1(3)*1/(cos(delta0))^2]';
+    Cd = [0 1 0 0 0; 0 0 0 0 1];
+    
+    n = size(Ad,1); m = size(Cd,1); k = 1; %size(Bd,2);
+    
+    %% augmented model
+    A = [Ad zeros(n,m); Cd*Ad eye(m,m)];
+    B = [Bd; Cd*Bd];
+    C = [zeros(m,n) eye(m,m)];
+    %% matrix generation
+    F = zeros(Np*m,m+n);
+    for i=1:Np
+        if (m>1)
+            F(m*i-(m-1):m*i,1:(m+n))=C*A^i;
+        else
+            F(i,1:(m+n))=C*A^i;
+        end
+    end
+    S = zeros(m*Np,Nc);
+    for i=1:Np
+        for j=1:Nc
+            if(j>i)
+                S(m*i-(m-1):m*i,j)=zeros(m,k);
+            else
+                S(m*i-(m-1):m*i,j)=C*A^((i-1)-(j-1))*B;
+            end
+        end
+    end
+
+    %% control calculation
+    % Unconstrained results
+    dU = zeros(min(1000,k*Nc),1);
+    %dU = inv(S'*S+rw*I)*(S'*Rs_rk-S'*F*xa);
+    R = rw*I;
+    Q = zeros(m*Np, m*Np);
+    for i=1:Np
+        Q(i*numel(q)-(numel(q)-1):i*numel(q),i*numel(q)-(numel(q)-1):i*numel(q)) = diag(q);
+    end
+    dU = inv(S'*Q*S+R)*S'*Q*(Rs_rk-F*xa);
+    U(1) = u_k1+dU(1);
+    for i=2:length(dU)
+        U(i) = U(i-1)+dU(i);
+    end
+end
+end
+
+function x_k = kinematicSingleTrack(u_k, x_k1, Ts)
+global parameters
+x_k(1,1) = x_k1(1,1)+Ts*parameters.vx*cos(x_k1(3));
+x_k(2,1) = x_k1(2,1)+Ts*parameters.vx*sin(x_k1(3));
+x_k(3,1) = x_k1(3,1)+parameters.vx*Ts*tan(u_k(1))/(parameters.Lr+parameters.Lf);
 end
