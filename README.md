@@ -17,18 +17,19 @@ https://jkk-web.sze.hu/esemeny/digitalis-jarmuipari-kutatasok-2022-mesterseges-i
 https://jkk-web.sze.hu/jovoformalo-jarmuipari-kutatasok-konferencia-2022/ \
 [5] G. Igneczi and E. Horvath: Node Point Optimization for Local Trajectory Planners based on Human Preferences. IEEE 21st World Symposium on Applied Machine Intelligence and Informatics, Herlany, Slovakia, 19-21. January, 2023. \
 https://ieeexplore.ieee.org/document/10044488 \
-[6] Igneczi, G., Horvath, E., Toth, R., & Nyilas, K. (2023). Curve Trajectory Model for Human Preferred Path Planning of Automated Vehicles. Automotive Innovations - *in press* \
-https://arxiv.org/ftp/arxiv/papers/2310/2310.02696.pdf \
+[6] Igneczi, G., Horvath, E., Toth, R., & Nyilas, K. (2023). Curve Trajectory Model for Human Preferred Path Planning of Automated Vehicles. Automotive Innovations - vol. 7, pp 59-70, 2024, doi: https://doi.org/10.1007/s42154-023-00259-8 \
+https://link.springer.com/article/10.1007/s42154-023-00259-8 \
 [7] G. Igneczi, T. Dobay: Typification of Driver Models Using Clustering Methods - Conference of Sustainable Vehicle Industry Technologies at University of Gyor, Gyor, Hungary, 14-16, June, 2023. \
 https://jkk-web.sze.hu/esemeny/fenntarthato-jarmuipari-technologiak-kutatasa-a-szechenyi-istvan-egyetemen-konferencia/ \
-[8] G. Igneczi, E. Horvath and K. Nyilas: A Linear Driver Model of Local Path Planning for Lane Driving, Paper presented at IEEE 21st International Symposium on Intelligent Systems and Informatics (SISY 2023), Pula, Croatia, 21-23, September, 2023. \
-http://conf.uni-obuda.hu/sisy2023/ \
+[8] G. Igneczi, E. Horvath and K. Nyilas: A Linear Driver Model of Local Path Planning for Lane Driving, In the proceedings of IEEE 21st International Symposium on Intelligent Systems and Informatics (SISY 2023), pp. 103-108, Pula, Croatia, 21-23, September, 2023. doi: 10.1109/SISY60376.2023.10417953\
+https://ieeexplore.ieee.org/document/10417953\
 [9] G. Igneczi, D. Jozsa: The Implementation of a Human-Like Lane Keep System in a Prototype Vehicle, Conference of Sustainable Vehicle Industry Technologies at University of Gyor, Gyor, Hungary, 2-4, November, 2023. \
 https://jkk-web.sze.hu/fenntarthato-jarmuipari-technologiak-kutatasa-a-szechenyi-istvan-egyetemen-konferencia-2023-november-06-07/ \
-[10] G. Igneczi, E. Horvath: Parameter Identification of the Linear Driver Model, in review \
-\
-[11] G. Igneczi, E. Horvath, A. Borsos and K. Nyilas: Short-term Compensation Strategy of Human Drivers in Lane Following, in review \
-\
+[11] G. Igneczi, E. Horvath and A. Borsos: Analysis of Drivers’ Path Follow Behaviour, In the proceedings of 21st International Conference on Informatics in Control, Automation and Robotics (ICINCO), 18-20 November, 2024, Porto, Protugal, in press \
+[12] G. Igneczi, E. Horvath, T. Dobay and K. Nyilas: Driver Clustering based on Individual Curve Path Selection Preferences, Automotive Innovations, in review\
+[13] G. Igneczi, E. Horvath: Human-Like Behaviour for Automated Vehicles (HLB4AV) Naturalistic Driving Dataset, In the proceedings of IEEE 22nd International Symposium on Intelligent Systems and Informatics (SISY 2024), in press, Pula, Croatia, 18-21, September, 2024\
+[14] G. Igneczi, E. Horvath, K. Nyilas: Model Predictive Planning and Control for Naturalistic Automated Driving, in review\
+[15] G. Igneczi, R. Toth, E. Horvath, K. Nyilas: Modelling Human Lane Following Behaviour, in review
 
 ## Main Sources
 ### Literature of path planning (PPxx)
