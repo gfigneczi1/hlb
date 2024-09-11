@@ -38,11 +38,19 @@ function [theta_calc] = theta_recalc(segment, correction)
     
 if (correction == 1)
     theta_calc = diff(segment.Y_abs)./diff(segment.X_abs);
-    theta_calc = [theta_calc(1) theta_calc];
+    if (size(theta_calc,1) == 1)
+        theta_calc = [theta_calc(1) theta_calc];
+    else
+        theta_calc = [theta_calc(1); theta_calc];
+    end
     theta_calc = atan(theta_calc); %+pi();
 else
     theta_calc = diff(segment.Y_abs)./diff(segment.X_abs);
-    theta_calc = [theta_calc(1) theta_calc];
+    if (size(theta_calc,1) == 1)
+        theta_calc = [theta_calc(1) theta_calc];
+    else
+        theta_calc = [theta_calc(1); theta_calc];
+    end
     theta_calc = atan(theta_calc)+pi();
 end
 

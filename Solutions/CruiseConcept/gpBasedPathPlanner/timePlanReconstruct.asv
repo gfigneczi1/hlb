@@ -18,7 +18,6 @@ PARAMS.EPOCH_CALCULATION = true;
 PARAMS.EPOCH_NUMBER = 10;
 PARAMS.GREEDY_REDUCTION = true;
 PARAMS.LDM_NP = [10, 39, 136];
-PARAMS.FILTER_OUTPUT = true;
 
 temp_folder_path = config.root;
 plots_folder_name = 'plots';
@@ -201,8 +200,7 @@ function [estimationGP, deviationGP, estimationLRM, estimationLDM] = resimulateT
     likfunc = @likGauss;    % Gaussian likelihood
     for i = 1:length(GP_params.hyp_opt_array)
         hyp = struct('mean', [], 'cov', 0, 'lik', -1);
-        hyp.cov = GP_params.hyp_opt_array{i}.cov;
-        hyp.lik = GP_params.hyp_opt_array{i}.lik;
+        hyp.cov = GP_params.hyp_opt_array{i};
         [estimationGP{i}, deviationGP{i}] = gp(hyp, @infGaussLik, meanfunc, covfunc, likfunc, GP_params.input_estimation{i}, GP_params.output_estimation{i}, input_validation); % extract the mean and covarance functions
     end
     
@@ -260,7 +258,7 @@ function [input, output, inputRaw, outputRaw, c_out, s_out, c_in, s_in] = prepar
             if (shiftOnOutput(shiftIDonOutput) > size(input,1))
                 break;
             else
-                output(shiftIDonOutput,shiftID) = delta(shiftOnOutput(shiftIDonOutput));
+                output(shiftIDonOutput,shiftID) = -segment_m(shiftOnOutput(shiftIDonOutput), indexes.c0);
             end
         end
     end
@@ -305,6 +303,7 @@ function [P_array, delta_0] = trainLDM(input, output, PARAMS)
 % with necessary data
 dT = 0.05;
 ds = input(:,2)*dT;
+output = movmean(output,180);
 delta_0 = mean(output(:,1));
 for i=1:size(input,1)
     S = cumsum(ds(i:end));

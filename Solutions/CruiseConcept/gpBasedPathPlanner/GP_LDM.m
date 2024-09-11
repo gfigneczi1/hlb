@@ -16,7 +16,7 @@ GENERATE_OFFSET_TIME_PLOTS = false;
 MAXIMUM_PREVIEW_DISTANCE = 150; % from within preview information is extracted, unit: m
 OUTPUT_STEP_DISTANCE = 10; % in meters
 NUMBER_OF_PREVIEW_INFORMATION = 2; % maximum number
-OUTPUT_SHIFT = linspace(15,MAXIMUM_PREVIEW_DISTANCE,10); %10:OUTPUT_STEP_DISTANCE:MAXIMUM_PREVIEW_DISTANCE; % preview distance is divided into sections where the output will be predicted
+OUTPUT_SHIFT = [10, 39, 136]; %linspace(15,MAXIMUM_PREVIEW_DISTANCE,10); %10:OUTPUT_STEP_DISTANCE:MAXIMUM_PREVIEW_DISTANCE; % preview distance is divided into sections where the output will be predicted
 MERGE_DATA_TABLES = false;
 DRIVER_ID_IF_NOT_MERGED = 1;
 SIMPLIFICATION_RATIO = 1;
@@ -24,18 +24,14 @@ EPOCH_CALCULATION = true;
 EPOCH_NUMBER = 10;
 SPARSE_DATA = false;
 GREEDY_REDUCTION = true;
-FILTER_OUTPUT = false;
+FILTER_OUTPUT = true;
+LDM_NP = [10, 39, 136];
 
-usedInputs = ones(1,8);
+usedInputs = ones(9,8);
 I = -1*(eye(8)-1);
-%usedInputs(2:end,:) = I; % take out one input at a time
+usedInputs(2:end,:) = I; % take out one input at a time
 
 %usedInputs(1,2:3) = 0; % no O_t no fO_t
-
-epss = [0.9, 0.5, 0.3, 0.275];
-
-iterationPool = [10, 25, 40, 50, 100];
-validationTrainRatioPlot = [0.3, 0.4, 0.5, 0.7];
 
 kernels = ["@covSEard", ...
     "{'covSum', {'covSEard', 'covLINard'}}",  ...
@@ -45,29 +41,8 @@ kernels = ["@covSEard", ...
     "{'covPPard',3}", ...
     "{'covSum', {'covLINard', {'covPPard',3}}}", ...
     "{'covSum', {'covSEard', {'covPPard',3}}}"];
-
-kernels = ["@covSEard", ...
-    "{'covSum', {'covSEard', 'covLINard'}}",  ...
-    "{'covPPard',3}", ...
-    "{'covSum', {'covLINard', {'covPPard',3}}}", ...
-    "{'covSum', {'covSEard', {'covPPard',3}}}"];
 %kernels = ["{'covSum',{{'covProd', {'covLINard', 'covLINard'}}, 'covSEard'}}"];
 %kernels = ["{'covSum',{{'covProd', {'covLINard', 'covLINard'}}, 'covSEard'}}"];
-
-for i=1:length(segments.segments)-2
-    % loop through segment_ms and concatenate each to the previous one
-    if (i==1)
-        segmentMerged=segments.segments(i).segment;
-    else
-        segmentMerged=[segmentMerged; segments.segments(i).segment];
-    end
-end
-[~, segmentMerged_m, indexesMerged] = prepareInputForPlanner(segmentMerged);
-
-PARAMS.MAXIMUM_INPUT_SIZE = MAXIMUM_INPUT_SIZE;
-PARAMS.FILTER_OUTPUT = FILTER_OUTPUT;
-PARAMS.OUTPUT_SHIFT = OUTPUT_SHIFT;
-[~, ~, ~, ~, ~, s_out, ~, s_in] = prepareData(segmentMerged_m, indexesMerged, PARAMS);
 
 if (MERGE_DATA_TABLES)
     for i=1:length(segments.segments)
@@ -95,20 +70,31 @@ set(0,'DefaultFigureVisible','off');
 shiftOnOutputSelection = OUTPUT_SHIFT;  %shift the offset in time (positive means shift forward)
 p = RATIO_OF_TRAIN_VS_TOTAL; %percentage of evaluation data from entire dataset
 
-for driverID = 5:size(segments.segments,2)-2
+for driverID = 1:size(segments.segments,2)
     DRIVER_ID_IF_NOT_MERGED = driverID;
     segment = segments.segments(DRIVER_ID_IF_NOT_MERGED).segment;
     name = segments.segments(DRIVER_ID_IF_NOT_MERGED).name;
     % transforming the struct to array for lower calculation time
     [~, segment_m, indexes] = prepareInputForPlanner(segment);
     dT = mean(diff(segment_m(:, indexes.Relative_time)));
-for kernelID = 1:size(kernels,2)
-    usedInput = usedInputs(1,:);
-    eps = epss(4);
-    MAX_NUMBER_ITERATIONS = 30; %iterationPool(3);
-    KERNEL_TYPE = kernels(kernelID);
-    p = validationTrainRatioPlot(3);
+    % generating the LDM output
+    input = [segment_m(:, indexes.OncomingVehicleTimeToPass), ...
+                segment_m(:, indexes.OncomingTrafficType), ...
+                segment_m(:, indexes.FrontTrafficType), ...
+                segment_m(:, indexes.VelocityX), ...
+                movmean(segment_m(:, indexes.AccelerationX),20), ...
+                movmean(segment_m(:, indexes.YawRate),20), ...
+                movmean(segment_m(:, indexes.LaneCurvature), 20), ...
+                movmean(segment_m(:, indexes.c3), 200)];
 
+    [P_array, delta_0] = trainLDM(input, -movmean(segment_m(:,indexes.c0),180), LDM_NP);
+    [estimationLDM] = resimulateTimeSequence (input, P_array, delta_0, LDM_NP);
+
+    % now with different input sets, predict the error to the instinctive
+    % path
+for kernelID = 1:size(usedInputs,1)
+    usedInput = usedInputs(kernelID,:);
+    KERNEL_TYPE = kernels(1);
     for shiftID=1:numel(OUTPUT_SHIFT)
         tic;
         dx = segment_m(:, indexes.VelocityX)*dT;
@@ -123,6 +109,8 @@ for kernelID = 1:size(kernels,2)
                 movmean(segment_m(:, indexes.c3), 200)];
 
         input = input(:,usedInput==1);
+        % resizing due to prior path
+        input = input(1:size(estimationLDM{shiftID},1),:);
     
         variablesPool = ["$t_{pass}$", "$o_{type}$", "$fo_{type}$", "$v_x$", "$a_x$", "$\omega$", "$\kappa_{road}$", "$d\kappa$"];
         variables = variablesPool(usedInput==1);
@@ -141,6 +129,14 @@ for kernelID = 1:size(kernels,2)
                 end
             end
         end
+
+        % resizing due to prior path
+        output = output(1:size(estimationLDM{shiftID},1),:);
+
+        % now subtracting the LDM path, in the corresponsing node point
+        % (shiftID)
+        outputLDM = estimationLDM{shiftID}; % LDM based offset
+        output = output-outputLDM; % compensation
 
         % simplification with clustering
         if (SIMPLIFICATION_RATIO < 1)
@@ -190,36 +186,33 @@ for kernelID = 1:size(kernels,2)
         shuffledIndeces = randperm(N);
         input = input(shuffledIndeces,:);
         output = output(shuffledIndeces, :);
+        outputLDM = outputLDM(shuffledIndeces,:);
+        
 
         % LIMIT DATA IF NEEDED
         % this is done before norm and central
         input = input(1:min(size(input,1),MAXIMUM_INPUT_SIZE),:);
         output = output(1:min(size(input,1),MAXIMUM_INPUT_SIZE), :);
+        outputLDM = outputLDM(1:min(size(input,1),MAXIMUM_INPUT_SIZE), :);
 
         % NORM AND CENTRAL
-        % According to the global cin and sin, cout and sout
-        [~, cout, ~] = normalize(output);
-        [~, cin, ~] = normalize(input);
-        output = (output-cout)./s_out(shiftID);
-        input = (input-cin)./s_in;
-        
-
-        % REMOVING SPARE POINTS I.E., OUTPUT HIGHER THAN 2, = 2 sigma
-        % variance
-        input = input(abs(output(:,1))<=2,:);
-        output = output(abs(output(:,1))<=2,:);
-        MAXIMUM_LENGTH_OF_SNIPPET = length(output);
+        [output, cout, s_out] = normalize(output);
+        [input, cin, s_in] = normalize(input);
+        % normalize the ldm output according to the output factors
+        outputLDM = (outputLDM-cout)/s_out;
         
         % SNIPETTING
         for snippetID = 1:min(MAXIMUM_NUMBER_OF_SNIPPET,floor(N/MAXIMUM_LENGTH_OF_SNIPPET))
             snippets{snippetID,1} = input((snippetID-1)*MAXIMUM_LENGTH_OF_SNIPPET+1:snippetID*MAXIMUM_LENGTH_OF_SNIPPET,:);
             snippets{snippetID,2} = output((snippetID-1)*MAXIMUM_LENGTH_OF_SNIPPET+1:snippetID*MAXIMUM_LENGTH_OF_SNIPPET,:);
+            snippets{snippetID,3} = outputLDM((snippetID-1)*MAXIMUM_LENGTH_OF_SNIPPET+1:snippetID*MAXIMUM_LENGTH_OF_SNIPPET,:);
         end
 
         % SIMULATION
         for i=1:min(MAXIMUM_NUMBER_OF_SNIPPET,length(snippets))
             Din = snippets{i,1};
             Dout = snippets{i,2};
+            DoutLDM = snippets{i,3};
             M = size(Din,1);
             % EVALUATION / VALIDATION DATA SELECTION
             estimationData = 1:1:round(p*M);
@@ -228,11 +221,14 @@ for kernelID = 1:size(kernels,2)
             output_estimation = Dout(estimationData,1);
             input_validation = Din(validationData,:);
             output_validation = Dout(validationData,:);
+            outputLDM_estimation = DoutLDM(estimationData,1);
+            outputLDM_validation = DoutLDM(validationData,1);
 
             % resampling estimation data
             k = 1;
             input_estimation = input_estimation(1:k:end,:);
             output_estimation = output_estimation(1:k:end,:);
+            outputLDM_estimation = outputLDM_estimation(1:k:end,:);
     
             %% Define GP 
             meanfunc = [];       % Start with a zero mean prior
@@ -290,6 +286,7 @@ for kernelID = 1:size(kernels,2)
                     for epochID=1:EPOCH_NUMBER
                         epoch{epochID,1} = input_estimation((epochID-1)*epochSize+1:epochID*epochSize,:);
                         epoch{epochID,2} = output_estimation((epochID-1)*epochSize+1:epochID*epochSize,:);
+                        epoch{epochID,3} = outputLDM_estimation((epochID-1)*epochSize+1:epochID*epochSize,:);
                         hypInduced = hyp;
                         if (SPARSE_DATA)
                             % generate initial value for induced inputs
@@ -304,7 +301,7 @@ for kernelID = 1:size(kernels,2)
 %                             for kId = 1:numel(unique(k))
 %                                 xu(kId,:) = mean(epoch{epochID,1}(k==kId,:));
 %                             end
-                            covInduced = {'apxSparse',{covfunc},xu};           % inducing points
+                            covInduced = {'apxSparse',covfunc,xu};           % inducing points
                             inf = @infGaussLik;
                             infv  = @(varargin) inf(varargin{:},struct('s',0.0));           % VFE, opt.s = 0
                             hypInduced.xu = xu; % adding induced inputs
@@ -315,20 +312,18 @@ for kernelID = 1:size(kernels,2)
                             % greedy reduction: iteratively increase input
                             % data, then run optimization of
                             % hyperparameters
-                            %eps = 150;
+                            eps = 250;
                             if (epochID==1)
                                 uGreedy = epoch{epochID,1};
                                 yGreedy = epoch{epochID,2};
+                                yGreedyLdm = epoch{epochID,3};
                             else
                                 for sampleID = 2:size(epoch{epochID,1})
-                                    e = uGreedy-epoch{epochID,1}(sampleID,:);
-                                    for ei=1:length(e)
-                                        n(ei) = norm(e(ei,:))*sqrt(1/size(uGreedy,2)); % normalized between range of uGreedy, normally +/-2
-                                    end
-                                    eucledianNorm = norm(n)*sqrt(1/length(n))/4; % normalized again to all samples and the possible range of error, now between 0 and 1. Here, eps = 0.1 means it is roughly 10%range away from the data in average
+                                    eucledianNorm = norm(uGreedy-epoch{epochID,1}(sampleID,:));
                                     if (eucledianNorm > eps)
                                         uGreedy = [uGreedy; epoch{epochID,1}(sampleID,:)];
                                         yGreedy = [yGreedy; epoch{epochID,2}(sampleID,:)];
+                                        yGreedyLdm = [yGreedyLdm; epoch{epochID,3}(sampleID,:)];
                                     end
                                 end
                             end
@@ -368,19 +363,19 @@ for kernelID = 1:size(kernels,2)
                     input_estimation = input_induced;
                     output_estimation = output_induced;
                 elseif (GREEDY_REDUCTION)
-                    hyp_opt = minimize(hyp, @gp, -MAX_NUMBER_ITERATIONS, @infGaussLik, meanfunc, covfunc, likfunc, uGreedy, yGreedy); 
+                    hyp_opt = minimize(hyp, @gp, -100, @infGaussLik, meanfunc, covfunc, likfunc, uGreedy, yGreedy); 
 
                     % checking performance degradation
                     [estimationgreedy, deviationgreedy] = gp(hyp_opt, @infGaussLik, meanfunc, covfunc, likfunc, uGreedy, yGreedy, input_estimation);
 
                     %% KPI-s
                     % RMS calculation
-                    RMSgreedy = sqrt(sum((estimationgreedy-output_estimation).^2)/size(estimationgreedy,1));
+                    RMSgreedy = sqrt(sum((estimationgreedy+outputLDM_estimation-(output_estimation+outputLDM_estimation)).^2)/size(estimationgreedy,1));
                     % NRMS - normalization on scale
-                    W = max(output_estimation) - min(output_estimation);
+                    W = max(output_estimation+outputLDM_estimation) - min(output_estimation+outputLDM_estimation);
                     NRMS_W_greedy = RMSgreedy/W;
                     % NRMS - normalization on absolute maximum
-                    M = max(abs(output_estimation));
+                    M = max(abs(output_estimation+outputLDM_estimation));
                     NRMS_M_greedy = RMSgreedy/M;
                     % mean variance
                     RMS_DEV_greedy = sqrt(sum(deviationgreedy.^2)/size(deviationgreedy,1));
@@ -393,6 +388,7 @@ for kernelID = 1:size(kernels,2)
                     % assigning for further analysis
                     input_estimation = uGreedy;
                     output_estimation = yGreedy;
+                    outputLDM_estimation = yGreedyLdm;
                 else
                     hyp_opt = hyp;
                 end
@@ -405,12 +401,12 @@ for kernelID = 1:size(kernels,2)
                 [estimation, deviation] = gp(hyp_opt, @infGaussLik, meanfunc, covfunc, likfunc, input_estimation, output_estimation, input_validation); % extract the mean and covarance functions
                 %% KPI-s
                 % RMS calculation
-                RMS = sqrt(sum((estimation-output_validation).^2)/size(estimation,1));
+                RMS = sqrt(sum((estimation+outputLDM_validation-(output_validation+outputLDM_validation)).^2)/size(estimation,1));
                 % NRMS - normalization on scale
-                W = max(output_validation) - min(output_validation);
+                W = max(output_validation+outputLDM_validation) - min(output_validation+outputLDM_validation);
                 NRMS_W = RMS/W;
                 % NRMS - normalization on absolute maximum
-                M = max(abs(output_validation));
+                M = max(abs(output_validation+outputLDM_validation));
                 NRMS_M = RMS/M;
                 % mean variance
                 RMS_DEV = sqrt(sum(deviation.^2)/size(deviation,1));
@@ -428,12 +424,12 @@ for kernelID = 1:size(kernels,2)
     
             %% KPI-s
             % RMS calculation
-            RMSest = sqrt(sum((estimationEstimation-output_estimation).^2)/size(estimationEstimation,1));
+            RMSest = sqrt(sum((estimationEstimation+outputLDM_estimation-(output_estimation+outputLDM_estimation)).^2)/size(estimationEstimation,1));
             % NRMS - normalization on scale
-            W = max(output_estimation) - min(output_estimation);
+            W = max(output_estimation+outputLDM_estimation) - min(output_estimation+outputLDM_estimation);
             NRMS_W_est = RMSest/W;
             % NRMS - normalization on absolute maximum
-            M = max(abs(output_estimation));
+            M = max(abs(output_estimation+outputLDM_estimation));
             NRMS_M_est = RMSest/M;
             % mean variance
             RMS_DEV_est = sqrt(sum(deviationEstimation.^2)/size(deviationEstimation,1));
@@ -448,30 +444,30 @@ for kernelID = 1:size(kernels,2)
             if (RATIO_OF_TRAIN_VS_TOTAL < 1)
                 % plot the estimation data
                 subplot(2,1,1);
-                confidenceBounds = [estimation+2*sqrt(deviation); flip(estimation-2*sqrt(deviation),1)];
+                confidenceBounds = [estimation+outputLDM_validation+2*sqrt(deviation); flip(estimation+outputLDM_validation-2*sqrt(deviation),1)];
                 confidencePoints = (1:1:numel(estimation))';
             
                 fill([confidencePoints; flip(confidencePoints)], confidenceBounds, 'y', 'DisplayName', '95% confidence');
                 hold on;
-                plot(estimation,'LineWidth', 2, 'color', 'k', 'LineStyle','--', 'DisplayName', 'estimated by GP');    
+                plot(estimation+outputLDM_validation,'LineWidth', 2, 'color', 'k', 'LineStyle','--', 'DisplayName', 'estimated by GP');    
                 ylabel('offset');
                 grid on;
-                plot(output_validation, 'LineWidth', 2, 'LineStyle', ':', 'color', 'b', 'DisplayName','validation data');
+                plot(output_validation+outputLDM_validation, 'LineWidth', 2, 'LineStyle', ':', 'color', 'b', 'DisplayName','validation data');
                 legend;
                 ylabel('offset(m)');
             end
     
             % plot the estimation data
             subplot(2,1,2);
-            confidenceBounds = [estimationEstimation+2*sqrt(deviationEstimation); flip(estimationEstimation-2*sqrt(deviationEstimation),1)];
+            confidenceBounds = [estimationEstimation+outputLDM_estimation+2*sqrt(deviationEstimation); flip(estimationEstimation+outputLDM_estimation-2*sqrt(deviationEstimation),1)];
             confidencePoints = (1:1:numel(estimationEstimation))';
         
             fill([confidencePoints; flip(confidencePoints)], confidenceBounds, 'y', 'DisplayName', '95% confidence');
             hold on;
-            plot(estimationEstimation,'LineWidth', 2, 'color', 'k', 'LineStyle','--', 'DisplayName', 'estimated by GP');    
+            plot(estimationEstimation+outputLDM_estimation,'LineWidth', 2, 'color', 'k', 'LineStyle','--', 'DisplayName', 'estimated by GP');    
             ylabel('offset');
             grid on;
-            plot(output_estimation, 'LineWidth', 2, 'LineStyle', ':', 'color', 'b', 'DisplayName','estimation data');
+            plot(output_estimation+outputLDM_estimation, 'LineWidth', 2, 'LineStyle', ':', 'color', 'b', 'DisplayName','estimation data');
             legend;
             ylabel('offset(m)');
             
@@ -549,15 +545,13 @@ for kernelID = 1:size(kernels,2)
                 close(f);
             end
         
-            trun = toc;
-            KPI{shiftID,i}= [RMS NRMS_W NRMS_M RMS_DEV RMSest NRMS_W_est NRMS_M_est RMS_DEV_est hyp_opt.cov RMSgreedy NRMS_W_greedy NRMS_M_greedy trun];
+            KPI{shiftID,i}= [RMS NRMS_W NRMS_M RMS_DEV RMSest NRMS_W_est NRMS_M_est RMS_DEV_est hyp_opt.cov];
             ETA(shiftID).hyp_opt = hyp_opt.cov;
             ETA(shiftID).input_estimation = input_estimation;
             ETA(shiftID).output_estimation = output_estimation;
-            ETA(shiftID).normFactors = [cin, s_in, cout,s_out];
+            ETA(shiftID).output_estimationLDM = outputLDM_estimation;
 
-
-            fprintf("time of shift id %d is %f\n", shiftID, trun);        
+            fprintf("time of shift id %d is %f\n", shiftID, toc);        
         end
     
         KPIsum(shiftID,:) = [mean(KPI{1}(:,2)) max(KPI{1}(:,2)) std(KPI{1}(:,3))];
@@ -627,25 +621,49 @@ for i=1:size(input,2)
 end
 end
 
-function [P_array, delta_0] = trainLDM(input, output, PARAMS)
+function [estimationLDM] = resimulateTimeSequence (input, P_array, delta_0, LDM_NP)
+    % LDM resimulate
+    dT = 0.05;
+    ds = input(:,4)*dT;
+    for i=1:size(input,1)
+        S = cumsum(ds(i:end));
+        np1 = i+find(S>=LDM_NP(1),1);
+        np2 = i+find(S>=LDM_NP(2),1);
+        np3 = i+find(S>=LDM_NP(3),1)-1;
+        if (isempty(np3))
+            break;
+        end
+        input_loc(i,:) = [mean(input(i:np1,7)) mean(input(np1:np2,7)) mean(input(np2:np3,7))];
+    end
+    leftCurves = mean(input_loc') >= 2.5e-4;
+    rightCurves = mean(input_loc') <= -2.5e-4;
+    inputLeft = input_loc; inputLeft(~leftCurves,:) = 0;
+    inputRight = input_loc; inputRight(~rightCurves,:) = 0;
+
+    for i=1:length(P_array)/2
+        estimationLDM{i} = inputLeft/0.001*P_array{i}+inputRight/0.001*P_array{i+3}+delta_0;
+    end
+end
+
+
+function [P_array, delta_0] = trainLDM(input, output, LDM_NP)
 % LDM requires special input set, therefore a local input_loc is created 
 % with necessary data
 dT = 0.05;
-ds = input(:,2)*dT;
+ds = input(:,4)*dT;
 delta_0 = mean(output(:,1));
 for i=1:size(input,1)
     S = cumsum(ds(i:end));
-    np1 = i+find(S>=PARAMS(1),1);
-    np2 = i+find(S>=PARAMS(2),1);
-    np3 = i+find(S>=PARAMS(3),1)-1;
+    np1 = i+find(S>=LDM_NP(1),1);
+    np2 = i+find(S>=LDM_NP(2),1);
+    np3 = i+find(S>=LDM_NP(3),1)-1;
     if (isempty(np3))
         break;
     end
-    input_loc(i,:) = [mean(input(i:np1,5)) mean(input(np1:np2,5)) mean(input(np2:np3,5))];
+    input_loc(i,:) = [mean(input(i:np1,7)) mean(input(np1:np2,7)) mean(input(np2:np3,7))];
     output_loc(i,:) = output([np1, np2, np3],1)-delta_0;
 end
 P = functional_driverModelLearning(input_loc/0.001, output_loc ,8);
-delta_0 = P(19);
 P = reshape(P(1:18),3,6);
 
 P_array{1} = P(:,1);
@@ -657,75 +675,3 @@ P_array{6} = P(:,6);
 
 end
 
-function delta = estimateLDM(input, dT)
-    dT = 0.05;
-    ds = input(:,2)*dT;
-    for i=1:size(inputRaw,1)
-        S = cumsum(ds(i:end));
-        np1 = i+find(S>=PARAMS.LDM_NP(1),1);
-        np2 = i+find(S>=PARAMS.LDM_NP(2),1);
-        np3 = i+find(S>=PARAMS.LDM_NP(3),1)-1;
-        if (isempty(np3))
-            break;
-        end
-        input_loc(i,:) = [mean(inputRaw(i:np1,5)) mean(inputRaw(np1:np2,5)) mean(inputRaw(np2:np3,5))];
-    end
-    leftCurves = mean(input_loc') >= 2.5e-4;
-    rightCurves = mean(input_loc') <= -2.5e-4;
-    inputLeft = input_loc; inputLeft(~leftCurves,:) = 0;
-    inputRight = input_loc; inputRight(~rightCurves,:) = 0;
-
-    for i=1:length(LDM_params.P_array)/2
-        estimationLDM{i} = inputLeft/0.001*LDM_params.P_array{i}+inputRight/0.001*LDM_params.P_array{i+3}+LDM_params.delta_0;
-    end
-end
-
-function [input, output, inputRaw, outputRaw, c_out, s_out, c_in, s_in] = prepareData(segment_m, indexes, PARAMS)
-     % input array
-     input = [segment_m(:, indexes.OncomingVehicleTimeToPass), ...
-                segment_m(:, indexes.OncomingTrafficType), ...
-                segment_m(:, indexes.FrontTrafficType), ...
-                segment_m(:, indexes.VelocityX), ...
-                movmean(segment_m(:, indexes.AccelerationX),20), ...
-                movmean(segment_m(:, indexes.YawRate),20), ...
-                movmean(segment_m(:, indexes.LaneCurvature), 20), ...
-                movmean(segment_m(:, indexes.c3), 200)];
-    
-    % output array
-    output = zeros(size(input,1),numel(PARAMS.OUTPUT_SHIFT));
-    if (PARAMS.FILTER_OUTPUT)
-        delta = movmean(-segment_m(:,indexes.c0),180);
-    else
-        delta = -segment_m(:,indexes.c0);
-    end
-    for shiftID=1:numel(PARAMS.OUTPUT_SHIFT)
-        dT = mean(diff(segment_m(:, indexes.Relative_time)));
-        dx = segment_m(:, indexes.VelocityX)*dT;        
-        shiftOnOutput = [1:1:size(segment_m(:,indexes.Relative_time),1)]'+floor(PARAMS.OUTPUT_SHIFT(shiftID)./dx);
-        for shiftIDonOutput=1:size(input,1)
-            if (shiftOnOutput(shiftIDonOutput) > size(input,1))
-                break;
-            else
-                output(shiftIDonOutput,shiftID) = delta(shiftOnOutput(shiftIDonOutput));
-            end
-        end
-    end
-    
-    inputRaw = input;
-    outputRaw = output;
-    
-    % SHUFFLE
-    N = size(input,1);
-    shuffledIndeces = randperm(N);
-    input = input(shuffledIndeces,:);
-    output = output(shuffledIndeces, :);
-
-    % LIMIT DATA IF NEEDED
-    % this is done before norm and central
-    input = input(1:min(size(input,1),PARAMS.MAXIMUM_INPUT_SIZE),:);
-    output = output(1:min(size(input,1),PARAMS.MAXIMUM_INPUT_SIZE), :);
-
-    % NORM AND CENTRAL
-    [output, c_out, s_out] = normAndCentral(output);
-    [input, c_in, s_in] = normAndCentral(input);
-end

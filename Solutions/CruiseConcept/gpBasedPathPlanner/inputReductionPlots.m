@@ -15,7 +15,7 @@ end
 
 %% NOW DOING PLOTS FOR ALL INPUTS SEPARATELY
 
-for driverID=1:size(NRMS,1)
+for driverID=1:8
     for inputID=1:size(NRMS,2)
         NRMS_avgd(driverID,inputID) = mean(NRMS(driverID,inputID,:));
     end
@@ -87,7 +87,7 @@ subplot(2,1,2);
 boxplot(NRMS_avgd(:,1:end));
 xticklabels(["All inputs", variables(1:end)]);
 grid on;
-ylim([0,0.07]);
+ylim([0,0.15]);
 
 set(gca,'FontSize', 14);
 if (id==2)
@@ -119,7 +119,7 @@ for driverID=1:numel(NRMS2D)
 end
 
 f = figure(3);
-f.Position = [100 100 850 500];
+f.Position = [100 100 850 300];
 set(f,'defaulttextInterpreter','latex') ;
 set(f, 'defaultAxesTickLabelInterpreter','latex');  
 set(f, 'defaultLegendInterpreter','latex');
@@ -127,7 +127,7 @@ set(f, 'defaultLegendInterpreter','latex');
 boxplot(NRMS_avgd(:,1:end));
 xticklabels(["All inputs", variables(1:end)]);
 grid on;
-ylim([0,0.07]);
+ylim([0,0.15]);
 
 set(gca,'FontSize', 14);
 if (id==2)
