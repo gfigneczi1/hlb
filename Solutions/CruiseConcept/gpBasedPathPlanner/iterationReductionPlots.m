@@ -2,16 +2,18 @@ close all;
 clear;
 
 USE_NRMS = false;
+TYPE = "PP3";
+
 if (USE_NRMS)
     ylims = [0, 0.15];
     labelBase = "$NRMS_{e_\delta}";
 else
-    ylims = [0, 0.6];
+    ylims = [0, 0.15];
     labelBase = "$RMS_{e_\delta}";
 end
 
 
-matFiles = dir(fullfile("C:\git\KDP\publications\GP\results\iteration_reduction\KPI_input*.mat"));
+matFiles = dir(fullfile("C:\git\KDP\publications\GP\results\iteration_reduction_withPP3\KPI_input*.mat"));
 
 for i=1:length(matFiles)
     data = load(fullfile(matFiles(i).folder, matFiles(i).name));
@@ -21,18 +23,18 @@ for i=1:length(matFiles)
         if(USE_NRMS)
             NRMS_val(driverID, inputID, shiftID) = data.KPI{shiftID}(2);
             NRMS_tr(driverID, inputID, shiftID) = data.KPI{shiftID}(6);
-            NRMS_ind(driverID, inputID, shiftID) = data.KPI{shiftID}(19);
-            timeRun(driverID, inputID, shiftID) = data.KPI{shiftID}(21);
+            NRMS_ind(driverID, inputID, shiftID) = data.KPI{shiftID}(27);
+            timeRun(driverID, inputID, shiftID) = data.KPI{shiftID}(29);
         else
             % using RMS upscaling by the central normalization factor
-            etaFiles = dir(fullfile("C:\git\KDP\publications\GP\results\iteration_reduction\ETA_input*.mat"));
+            etaFiles = dir(fullfile("C:\git\KDP\publications\GP\results\iteration_reduction_withPP3\ETA_input*.mat"));
             eta = load(fullfile(etaFiles(i).folder, etaFiles(i).name));
-            sigma = eta.ETA.normFactors(10+shiftID);
+            sigma = eta.ETA(shiftID).normFactors(17+shiftID);
 
             NRMS_val(driverID, inputID, shiftID) = data.KPI{shiftID}(1)*sigma;
             NRMS_tr(driverID, inputID, shiftID) = data.KPI{shiftID}(5)*sigma;
-            NRMS_ind(driverID, inputID, shiftID) = data.KPI{shiftID}(18)*sigma;
-            timeRun(driverID, inputID, shiftID) = data.KPI{shiftID}(21);
+            NRMS_ind(driverID, inputID, shiftID) = data.KPI{shiftID}(26)*sigma;
+            timeRun(driverID, inputID, shiftID) = data.KPI{shiftID}(29);
         end
     end
 end
@@ -49,7 +51,7 @@ for driverID=1:size(NRMS_val,1)
 end
 
 markers = {'x', 'o', '*', '.', '+', 'diamond', 'square', '^', '<', '>', 'hexagram', 'pentagram', 'none', 'x'};
-variables = ["$10$", "$25$", "$40$", "$50$", "$100$"];
+variables = ["$5$", "$10$", "$20$", "$50$", "$100$"];
 
 %% DRIVERS' data plotted in the function of the different epsilon values - induction, train and validation data
 f = figure(1);

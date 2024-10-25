@@ -18,4 +18,6 @@ switch config.segmentation_profile
         segments = segmentor_olLDMResim(input_folder);
     case "ModelTrain"
         segments = segmentor_modelTraining(input_folder);
+    case "DriverModelSynthetic"
+        segments = segmentor_driverModelSynthetic(input_folder);
 end

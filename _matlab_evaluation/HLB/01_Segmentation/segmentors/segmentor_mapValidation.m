@@ -23,6 +23,14 @@ function [segments] = segmentor_mapValidation(input_folder)
         elseif (isfield(rawData, 'segment'))
             rawData = rawData.segment;
         end
+        if (isfield(rawData, "LongPos_Abs"))
+            rawData.LongPos_abs = rawData.LongPos_Abs;            
+            rawData=rmfield(rawData, 'LongPos_Abs');
+        end
+        if (isfield(rawData, "LatPos_Abs"))
+            rawData.LatPos_abs = rawData.LatPos_Abs;
+            rawData=rmfield(rawData, 'LatPos_Abs');
+        end
         [ mandatoryStatus, testStatus ] = signalChecker( rawData, mandatorySignals, testSignals );
         if (zalaData && mandatoryStatus == 0)
             for i=1:size(rawData.X_abs_GNSS,2)
@@ -47,6 +55,9 @@ function [segments] = segmentor_mapValidation(input_folder)
         disp(strcat("test signals:",num2str(testStatus)));
         if (testStatus == 1)
             % VALIDATOR FILE
+            [rawData.X_abs,rawData.Y_abs] = deg2utm(rawData.LatPos_abs, rawData.LongPos_abs);
+            rawData.X_abs = rawData.X_abs';
+            rawData.Y_abs = rawData.Y_abs';
             rawData = redundantPointsFilter(rawData, "Time");
             if (contains(matFiles(fileID).name, "south"))
                 rawData.theta_calc = theta_recalc(rawData,1);
@@ -60,7 +71,7 @@ function [segments] = segmentor_mapValidation(input_folder)
             rawData = structure_filter(rawData, "GPS_status", 4, "GT");
             %rawData = structure_filter(rawData, "lanevalidity", 1);
             % 1: rural road, 2: highway
-            %rawData = structure_filter(rawData, "roadType", 1);
+            rawData = structure_filter(rawData, "roadType", 1, "EQ");
             rawData = structure_filter(rawData, "invalidVx",0, "EQ");
             % only necessary if opposite direction traffic is supposed
             rawData = structure_filter(rawData, "validc0",1, "EQ");
@@ -80,7 +91,7 @@ function [segments] = segmentor_mapValidation(input_folder)
             rawData = debouncer(rawData, "GPS_status", 4, 20); % last arg is debounce time in [s]
             rawData = structure_filter(rawData, "GPS_status", 4, "GT");
             % 1: rural road, 2: highway
-            %rawData = structure_filter(rawData, "roadType", 1);
+            rawData = structure_filter(rawData, "roadType", 1, "EQ");
             rawData = structure_filter(rawData, "invalidVx",0, "EQ");
         end
         signals = fieldnames(rawData);

@@ -107,7 +107,7 @@ parameters.P_ELDM = [0.39 0.24 0.12 -0.23 -0.39 -0.18 0.07; ...
     -0.39 -0.2 -0.1 0.43 0.6 0.18 0.07; ...
     0.08 0.04 0.07 -0.18 -0.18 0.03 0.07];
 %parameters.P_ELDM = [reshape(P_ELDM(1:9),3,3) reshape(P_ELDM(10:18),3,3) ones(3,1)*P_ELDM(19)];
-parameters.P_ELDM = zeros(3,7);
+%parameters.P_ELDM = zeros(3,7);
 
 parameters.traffic = generateTraffic(parameters.vx, 50, path, T, Ts);
     

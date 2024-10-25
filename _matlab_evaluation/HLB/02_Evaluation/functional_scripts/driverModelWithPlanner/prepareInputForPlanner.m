@@ -2,11 +2,13 @@ function [segment, segment_m, indexes] = prepareInputForPlanner(segment)
 
     c0_filtered = movmean(0.5*(segment.LaneEdgePositionLeft+segment.LaneEdgePositionRight), 2);
 
-    if(~isfield(segment, "X_abs"))
+    Exist_Column = strcmp('X_abs',segment.Properties.VariableNames);
+
+    if(~any(Exist_Column==1))
           segment.X_abs = segment.LongPos_abs * 40075000 .* cos(segment.LatPos_abs*pi()/180) / 360;
           segment.Y_abs = segment.LatPos_abs * 111.32*1000;
     end
-    if (~isfield(segment, "theta_calc"))
+    if (~any(strcmp('theta_calc',segment.Properties.VariableNames)==1))
         dir = (mean(diff(segment.X_abs))); % +: "north", -: "south"
             if (dir > 0)
                 segment.theta_calc = theta_recalc(segment, 1);
@@ -96,32 +98,33 @@ function [segment, segment_m, indexes] = prepareInputForPlanner(segment)
     indexes.jyRel = size(segment_m,2);
     
     % predicted time to lane crossing (TTLC)
-    segment_m(1:end-1,end+1) = diff(-segment_m(:,indexes.c0))./diff(segment_m(:,indexes.Relative_time));
-    segment_m(end,end) = segment_m(end-1,end);
-    segment_m(:,end) = movmean(segment_m(:,end),10);
-    indexes.vy = size(segment_m,2);
-    segment_m(:,end+1) = segment_m(:,indexes.VelocityX).*sin((-atan(segment_m(:,indexes.LaneOrientation)))) + segment_m(:,indexes.vy).*cos((-atan(segment_m(:,indexes.LaneOrientation))));
-    indexes.veta = size(segment_m,2);
-    segment_m(:,end+1) = segment_m(:,indexes.AccelerationX).*sin((-atan(segment_m(:,indexes.LaneOrientation)))) + segment_m(:,indexes.Acceleration_Y).*cos((-atan(segment_m(:,indexes.LaneOrientation))));
-    indexes.aeta = size(segment_m,2);
-
-    driftingSide = segment_m(:,indexes.veta)>0; % 1: left side is critical, 0: right side is critical
-    dcrit = zeros(size(segment_m,1),1);
-    dcrit(driftingSide) = segment_m(driftingSide,indexes.LaneEdgePositionLeft);
-    dcrit(~driftingSide) = segment_m(~driftingSide,indexes.LaneEdgePositionRight);
-    ttcl1 = (-segment_m(:,indexes.veta)+(segment_m(:,indexes.veta).^2+2*segment_m(:,indexes.aeta).*dcrit).^0.5)./segment_m(:,indexes.aeta);
-    ttcl2 = (-segment_m(:,indexes.veta)-(segment_m(:,indexes.veta).^2+2*segment_m(:,indexes.aeta).*dcrit).^0.5)./segment_m(:,indexes.aeta);
-    % selecting the TTCL-s from the vectors
-    relevantttcl = (imag(ttcl1)==0 & ttcl1>=0) | (imag(ttcl2)==0 & ttcl2>=0);
-    ttcl1(imag(ttcl1)~=0 | real(ttcl1)<0) = inf;
-    ttcl2(imag(ttcl2)~=0 | real(ttcl2)<0) = inf;
-
-    TTCL = min(ttcl1, ttcl2);
-    TTCL(~relevantttcl) = inf;
-
-    segment_m(:,end+1) = TTCL;
-    indexes.TTCL = size(segment_m,2);
-
+    if (indexes.Acceleration_Y > 0)
+        segment_m(1:end-1,end+1) = diff(-segment_m(:,indexes.c0))./diff(segment_m(:,indexes.Relative_time));
+        segment_m(end,end) = segment_m(end-1,end);
+        segment_m(:,end) = movmean(segment_m(:,end),10);
+        indexes.vy = size(segment_m,2);
+        segment_m(:,end+1) = segment_m(:,indexes.VelocityX).*sin((-atan(segment_m(:,indexes.LaneOrientation)))) + segment_m(:,indexes.vy).*cos((-atan(segment_m(:,indexes.LaneOrientation))));
+        indexes.veta = size(segment_m,2);
+        segment_m(:,end+1) = segment_m(:,indexes.AccelerationX).*sin((-atan(segment_m(:,indexes.LaneOrientation)))) + segment_m(:,indexes.Acceleration_Y).*cos((-atan(segment_m(:,indexes.LaneOrientation))));
+        indexes.aeta = size(segment_m,2);
+    
+        driftingSide = segment_m(:,indexes.veta)>0; % 1: left side is critical, 0: right side is critical
+        dcrit = zeros(size(segment_m,1),1);
+        dcrit(driftingSide) = segment_m(driftingSide,indexes.LaneEdgePositionLeft);
+        dcrit(~driftingSide) = segment_m(~driftingSide,indexes.LaneEdgePositionRight);
+        ttcl1 = (-segment_m(:,indexes.veta)+(segment_m(:,indexes.veta).^2+2*segment_m(:,indexes.aeta).*dcrit).^0.5)./segment_m(:,indexes.aeta);
+        ttcl2 = (-segment_m(:,indexes.veta)-(segment_m(:,indexes.veta).^2+2*segment_m(:,indexes.aeta).*dcrit).^0.5)./segment_m(:,indexes.aeta);
+        % selecting the TTCL-s from the vectors
+        relevantttcl = (imag(ttcl1)==0 & ttcl1>=0) | (imag(ttcl2)==0 & ttcl2>=0);
+        ttcl1(imag(ttcl1)~=0 | real(ttcl1)<0) = inf;
+        ttcl2(imag(ttcl2)~=0 | real(ttcl2)<0) = inf;
+    
+        TTCL = min(ttcl1, ttcl2);
+        TTCL(~relevantttcl) = inf;
+    
+        segment_m(:,end+1) = TTCL;
+        indexes.TTCL = size(segment_m,2);
+    end
     % average path (needed for lane wandering analysis)
     dT = mean(diff(segment_m(:,indexes.Relative_time)));
     window = floor(9/dT);

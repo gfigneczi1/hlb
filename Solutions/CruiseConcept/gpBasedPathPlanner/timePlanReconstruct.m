@@ -5,11 +5,11 @@
 close all; clear;
 load('C:\database\KDP_HLB_GP\Dr008_Dr023_input_GP.mat');
 config.root = "./";
-READ_GP_PARAMS = false;
+READ_GP_PARAMS = true;
 
 PARAMS.MAXIMUM_INPUT_SIZE = 15000; % before snipetting and normalization
-PARAMS.KERNEL_TYPE = "{'covSum', {'covSEard', {'covPPard',3}}}";
-PARAMS.RATIO_OF_TRAIN_VS_TOTAL = 0.7;
+PARAMS.KERNEL_TYPE = "@covSEard";%"{'covPPard',3}";
+PARAMS.RATIO_OF_TRAIN_VS_TOTAL = 0.5;
 PARAMS.MAXIMUM_PREVIEW_DISTANCE = 150; % from within preview information is extracted, unit: m
 PARAMS.OUTPUT_STEP_DISTANCE = 10; % in meters
 PARAMS.NUMBER_OF_PREVIEW_INFORMATION = 2; % maximum number
@@ -18,7 +18,7 @@ PARAMS.EPOCH_CALCULATION = true;
 PARAMS.EPOCH_NUMBER = 10;
 PARAMS.GREEDY_REDUCTION = true;
 PARAMS.LDM_NP = [10, 39, 136];
-PARAMS.FILTER_OUTPUT = true;
+PARAMS.FILTER_OUTPUT = false;
 
 temp_folder_path = config.root;
 plots_folder_name = 'plots';
@@ -28,26 +28,16 @@ set(0,'DefaultFigureVisible','off');
 shiftOnOutputSelection = PARAMS.OUTPUT_SHIFT;  %shift the offset in time (positive means shift forward)
 p = PARAMS.RATIO_OF_TRAIN_VS_TOTAL; %percentage of evaluation data from entire dataset
 
-for driverID = 7:size(segments.segments,2)
+for driverID = 6:size(segments.segments,2)
     DRIVER_ID_IF_NOT_MERGED = driverID;
     segment = segments.segments(DRIVER_ID_IF_NOT_MERGED).segment;
     name = segments.segments(DRIVER_ID_IF_NOT_MERGED).name;
     % transforming the struct to array for lower calculation time
     [~, segment_m, indexes] = prepareInputForPlanner(segment);
-    [input, output, inputRaw, outputRaw, c_out, s_out, c_in, s_in] = prepareData(segment_m, indexes, PARAMS);
-    
-    M = size(input,1);
-    % EVALUATION / VALIDATION DATA SELECTION
-    estimationData = 1:1:round(p*M);
-    validationData = round(p*M)+1:1:M;
-    input_estimation = input(estimationData,:);
-    output_estimation = output(estimationData,:);
-    input_validation = input(validationData,:);
-    output_validation = output(validationData,:);
-    
+       
     if (READ_GP_PARAMS)
         % read the learnt data from previous runs
-        pathToParams = "C:\git\KDP\publications\GP\results\gp_model";
+        pathToParams = "C:\git\KDP\publications\GP\results\kernel_verification_setparams";
         paramGP = dir(fullfile(pathToParams,"ETA_input*"));
         for fileID = 1:length(paramGP)
             paramDriverID = str2num(paramGP(fileID).name(strfind(paramGP(fileID).name, 'driver_')+7:strfind(paramGP(fileID).name, '.')-1));
@@ -58,12 +48,45 @@ for driverID = 7:size(segments.segments,2)
                     GP_params.output_estimation{npID} = paramData.ETA(npID).output_estimation;
                     GP_params.input_estimation{npID} = paramData.ETA(npID).input_estimation;
                 end
+                c_in = paramData.ETA(npID).normFactors(1:8); % common for all GPs
+                s_in = paramData.ETA(npID).normFactors(9:16); % common for all GPs
+                c_out(1:10) = paramData.ETA(npID).normFactors(17); % one at each node point
+                s_out = paramData.ETA(npID).normFactors(18:27); % one at each node point
                 break;
             else
                 paramData = [];
             end
         end
+        
+        [~, ~, inputRaw, outputRaw] = prepareData(segment_m, indexes, PARAMS);
+        for i=1:size(inputRaw,2)
+            input(:,i) = (inputRaw(:,i)-c_in(i))/s_in(i);
+        end
+        for i=1:size(outputRaw,2)
+            output(:,i) = (outputRaw(:,i)-c_out(i))/s_out(i);
+        end
+        
+        M = size(input,1);
+        % EVALUATION / VALIDATION DATA SELECTION
+        estimationData = 1:1:round(p*M);
+        validationData = round(p*M)+1:1:M;
+        input_estimation = input(estimationData,:);
+        output_estimation = output(estimationData,:);
+        input_validation = input(validationData,:);
+        output_validation = output(validationData,:);
+        
     else
+        [input, output, inputRaw, outputRaw, c_out, s_out, c_in, s_in] = prepareData(segment_m, indexes, PARAMS); %xxx_ 'underscore' means on the fly generated factors
+    
+        M = size(input,1);
+        % EVALUATION / VALIDATION DATA SELECTION
+        estimationData = 1:1:round(p*M);
+        validationData = round(p*M)+1:1:M;
+        input_estimation = input(estimationData,:);
+        output_estimation = output(estimationData,:);
+        input_validation = input(validationData,:);
+        output_validation = output(validationData,:);
+        
         % Train GPs
         hyp_opt_array = trainGPs(input_estimation, output_estimation, PARAMS);
         GP_params.hyp_opt_array = hyp_opt_array;
@@ -81,8 +104,11 @@ for driverID = 7:size(segments.segments,2)
     LRM_params.P_array = P_array;
     
     % Generate output
-    [inputResim, c, s] = normAndCentral(inputRaw);
-    [estimationGP, deviationGP, estimationLRM, estimationLDM] = resimulateTimeSequence (inputResim, GP_params, LRM_params, LDM_params, PARAMS, c,s);
+    % normalizing the input according to the incoming factors
+    for i=1:size(inputRaw,2)
+        inputResim(:,i) = (inputRaw(:,i)-c_in(i))/s_in(i);
+    end
+    [estimationGP, deviationGP, estimationLRM, estimationLDM] = resimulateTimeSequence (inputResim, GP_params, LRM_params, LDM_params, PARAMS, c_in,s_in,c_out, s_out);
 
     for i=1:1
         relSegment = [1.4185e6, 1.4205e6];
@@ -193,7 +219,7 @@ for driverID = 7:size(segments.segments,2)
 end
 
 %% SUPPORT FUNCTIONS
-function [estimationGP, deviationGP, estimationLRM, estimationLDM] = resimulateTimeSequence (input_validation, GP_params, LRM_params, LDM_params, PARAMS, c,s)
+function [estimationGP, deviationGP, estimationLRM, estimationLDM] = resimulateTimeSequence (input_validation, GP_params, LRM_params, LDM_params, PARAMS, c_in,s_in,c_out, s_out)
     % GP resimulate
     meanfunc = [];       % Start with a zero mean prior
     eval(strcat('covfunc = ',PARAMS.KERNEL_TYPE));    % Squared Exponental covariance function
@@ -213,7 +239,7 @@ function [estimationGP, deviationGP, estimationLRM, estimationLDM] = resimulateT
 
     % LDM resimulate
     % denormalize input data
-    inputRaw = input_validation*diag(s)+c;
+    inputRaw = input_validation*diag(s_in)+c_in;
     dT = 0.05;
     ds = inputRaw(:,2)*dT;
     for i=1:size(inputRaw,1)
@@ -239,11 +265,13 @@ end
 function [input, output, inputRaw, outputRaw, c_out, s_out, c_in, s_in] = prepareData(segment_m, indexes, PARAMS)
      % input array
      input = [segment_m(:, indexes.OncomingVehicleTimeToPass), ...
-        segment_m(:, indexes.VelocityX), ...
-        movmean(segment_m(:, indexes.AccelerationX),20), ...
-        movmean(segment_m(:, indexes.YawRate),20), ...
-        movmean(segment_m(:, indexes.LaneCurvature), 20), ...
-        movmean(segment_m(:, indexes.c3), 200)];
+                segment_m(:, indexes.OncomingTrafficType), ...
+                segment_m(:, indexes.FrontTrafficType), ...
+                segment_m(:, indexes.VelocityX), ...
+                movmean(segment_m(:, indexes.AccelerationX),20), ...
+                movmean(segment_m(:, indexes.YawRate),20), ...
+                movmean(segment_m(:, indexes.LaneCurvature), 20), ...
+                movmean(segment_m(:, indexes.c3), 200)];
     
     % output array
     output = zeros(size(input,1),numel(PARAMS.OUTPUT_SHIFT));
@@ -283,6 +311,7 @@ function [input, output, inputRaw, outputRaw, c_out, s_out, c_in, s_in] = prepar
     [output, c_out, s_out] = normAndCentral(output);
     [input, c_in, s_in] = normAndCentral(input);
 end
+
 
 function [dataOut, c,s]= normAndCentral(dataIn)
     for i=1:size(dataIn,2)

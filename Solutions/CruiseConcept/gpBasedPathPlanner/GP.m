@@ -34,7 +34,7 @@ I = -1*(eye(8)-1);
 
 epss = [0.9, 0.5, 0.3, 0.275];
 
-iterationPool = [10, 25, 40, 50, 100];
+iterationPool = [5,10,20];
 validationTrainRatioPlot = [0.3, 0.4, 0.5, 0.7];
 
 kernels = ["@covSEard", ...
@@ -95,18 +95,18 @@ set(0,'DefaultFigureVisible','off');
 shiftOnOutputSelection = OUTPUT_SHIFT;  %shift the offset in time (positive means shift forward)
 p = RATIO_OF_TRAIN_VS_TOTAL; %percentage of evaluation data from entire dataset
 
-for driverID = 5:size(segments.segments,2)-2
+for driverID = 1:size(segments.segments,2)-2
     DRIVER_ID_IF_NOT_MERGED = driverID;
     segment = segments.segments(DRIVER_ID_IF_NOT_MERGED).segment;
     name = segments.segments(DRIVER_ID_IF_NOT_MERGED).name;
     % transforming the struct to array for lower calculation time
     [~, segment_m, indexes] = prepareInputForPlanner(segment);
     dT = mean(diff(segment_m(:, indexes.Relative_time)));
-for kernelID = 1:size(kernels,2)
+for kernelID = 1:1 %size(iterationPool,2)
     usedInput = usedInputs(1,:);
     eps = epss(4);
-    MAX_NUMBER_ITERATIONS = 30; %iterationPool(3);
-    KERNEL_TYPE = kernels(kernelID);
+    MAX_NUMBER_ITERATIONS = iterationPool(2);
+    KERNEL_TYPE = kernels(4);
     p = validationTrainRatioPlot(3);
 
     for shiftID=1:numel(OUTPUT_SHIFT)
@@ -551,7 +551,7 @@ for kernelID = 1:size(kernels,2)
         
             trun = toc;
             KPI{shiftID,i}= [RMS NRMS_W NRMS_M RMS_DEV RMSest NRMS_W_est NRMS_M_est RMS_DEV_est hyp_opt.cov RMSgreedy NRMS_W_greedy NRMS_M_greedy trun];
-            ETA(shiftID).hyp_opt = hyp_opt.cov;
+            ETA(shiftID).hyp_opt = hyp_opt;
             ETA(shiftID).input_estimation = input_estimation;
             ETA(shiftID).output_estimation = output_estimation;
             ETA(shiftID).normFactors = [cin, s_in, cout,s_out];

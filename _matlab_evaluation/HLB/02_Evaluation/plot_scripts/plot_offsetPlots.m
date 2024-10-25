@@ -1,6 +1,6 @@
-function plot_offsetPlots(segment_m,indexes,offsets, driverID)
+function f = plot_offsetPlots(segment_m,indexes,offsets, driverID)
 
-    relSegment = [1.4185e6, 1.4205e6];
+    relSegment = [0, 1200];
     dx = mean(diff(segment_m(:,indexes.X_abs)));
     X_abs = segment_m(:,indexes.X_abs);
 
@@ -43,7 +43,8 @@ function plot_offsetPlots(segment_m,indexes,offsets, driverID)
     xlabel('X-UTM(m)'); ylabel("$\delta(m)$");
     yline(0, "HandleVisibility","off", 'Alpha',0.3, 'Color','k', 'LineWidth',3);
 
-    legend("Location", "best", "Orientation","horizontal");
+    legend("Location", "best", "Orientation","horizontal", "NumColumns",5);
+
     set(gca,'FontSize', 14);
     xlim(relSegment);
     ylim([-1,1]);
@@ -65,6 +66,7 @@ function plot_offsetPlots(segment_m,indexes,offsets, driverID)
     set(gca,'FontSize', 14);
     xlim(relSegment);
     title("Road curvature");
+    ylim([-3e-3, 3e-3]);
 
     subplot(3,1,3);
     leftEdgeCoordinates = [X_abs-segment_m(:,indexes.LaneEdgePositionLeft).*sin(segment_m(:,indexes.theta_calc)) ...
@@ -90,17 +92,15 @@ function plot_offsetPlots(segment_m,indexes,offsets, driverID)
     grid on;
     xlabel("X-UTM(m)"); ylabel("Y-UTM(m)");
     
-    annotation('textarrow',[0.7 0.65],[0.22 0.22], 'String','Driving direction', 'FontSize', 14);
+    dir = mean(diff(segment_m(:,indexes.X_abs)));
+    if (dir < 0)
+        annotation('textarrow',[0.7 0.65],[0.22 0.22], 'String','Driving direction', 'FontSize', 14);
+    else
+        annotation('textarrow',[0.3 0.35],[0.22 0.22], 'String','Driving direction', 'FontSize', 14);
+    end
     ylims = get(gca,'ylim');
     set(gca,'FontSize', 14);
     title("Vehicle path");
     ylim(ylims);
-
-    savefig(f, fullfile(temp_folder_path, plots_folder_name,...
-                        strcat('Resimulate_plots_driver_', num2str(driverID), '.fig')));
-    saveas(f, fullfile(temp_folder_path, plots_folder_name,...
-                    strcat('Resimulate_plots_driver_', num2str(driverID), '.png')));
-    close(f);
-
 end
 
