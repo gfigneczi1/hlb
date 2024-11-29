@@ -1,0 +1,104 @@
+[
+  {
+    "directory": "/Users/yuhan/Desktop/Dr_Liu_Works/0-文章/0-进行中/2022-Automatica/Response to the reviewers_Automaica_2023/code for Automatica 2022-varGP-new/codegen/mex/DGP_varsgpPredict_x_c",
+    "command": "/usr/bin/xcrun -sdk macosx12.3 clang -fno-common -arch x86_64 -mmacosx-version-min=10.15 -fexceptions -isysroot /Library/Developer/CommandLineTools/SDKs/MacOSX.sdk -DMATLAB_MEX_FILE -O2 -fwrapv -DNDEBUG -std=c99 -I \".\" -I \"/Users/yuhan/Desktop/Dr_Liu_Works/0-文章/0-进行中/2022-Automatica/Response to the reviewers_Automaica_2023/code for Automatica 2022-varGP-new\" -I \"./interface\" -I \"/Applications/MATLAB_R2021b.app/extern/include\" -I \".\" -DMODEL=DGP_varsgpPredict_x_c_mex -c  DGP_varsgpPredict_x_c_data.c -o build/maci64/DGP_varsgpPredict_x_c_data.o",
+    "file": "DGP_varsgpPredict_x_c_data.c",
+    "output": "build/maci64/DGP_varsgpPredict_x_c_data.o"
+  },
+  {
+    "directory": "/Users/yuhan/Desktop/Dr_Liu_Works/0-文章/0-进行中/2022-Automatica/Response to the reviewers_Automaica_2023/code for Automatica 2022-varGP-new/codegen/mex/DGP_varsgpPredict_x_c",
+    "command": "/usr/bin/xcrun -sdk macosx12.3 clang -fno-common -arch x86_64 -mmacosx-version-min=10.15 -fexceptions -isysroot /Library/Developer/CommandLineTools/SDKs/MacOSX.sdk -DMATLAB_MEX_FILE -O2 -fwrapv -DNDEBUG -std=c99 -I \".\" -I \"/Users/yuhan/Desktop/Dr_Liu_Works/0-文章/0-进行中/2022-Automatica/Response to the reviewers_Automaica_2023/code for Automatica 2022-varGP-new\" -I \"./interface\" -I \"/Applications/MATLAB_R2021b.app/extern/include\" -I \".\" -DMODEL=DGP_varsgpPredict_x_c_mex -c  rt_nonfinite.c -o build/maci64/rt_nonfinite.o",
+    "file": "rt_nonfinite.c",
+    "output": "build/maci64/rt_nonfinite.o"
+  },
+  {
+    "directory": "/Users/yuhan/Desktop/Dr_Liu_Works/0-文章/0-进行中/2022-Automatica/Response to the reviewers_Automaica_2023/code for Automatica 2022-varGP-new/codegen/mex/DGP_varsgpPredict_x_c",
+    "command": "/usr/bin/xcrun -sdk macosx12.3 clang -fno-common -arch x86_64 -mmacosx-version-min=10.15 -fexceptions -isysroot /Library/Developer/CommandLineTools/SDKs/MacOSX.sdk -DMATLAB_MEX_FILE -O2 -fwrapv -DNDEBUG -std=c99 -I \".\" -I \"/Users/yuhan/Desktop/Dr_Liu_Works/0-文章/0-进行中/2022-Automatica/Response to the reviewers_Automaica_2023/code for Automatica 2022-varGP-new\" -I \"./interface\" -I \"/Applications/MATLAB_R2021b.app/extern/include\" -I \".\" -DMODEL=DGP_varsgpPredict_x_c_mex -c  DGP_varsgpPredict_x_c_initialize.c -o build/maci64/DGP_varsgpPredict_x_c_initialize.o",
+    "file": "DGP_varsgpPredict_x_c_initialize.c",
+    "output": "build/maci64/DGP_varsgpPredict_x_c_initialize.o"
+  },
+  {
+    "directory": "/Users/yuhan/Desktop/Dr_Liu_Works/0-文章/0-进行中/2022-Automatica/Response to the reviewers_Automaica_2023/code for Automatica 2022-varGP-new/codegen/mex/DGP_varsgpPredict_x_c",
+    "command": "/usr/bin/xcrun -sdk macosx12.3 clang -fno-common -arch x86_64 -mmacosx-version-min=10.15 -fexceptions -isysroot /Library/Developer/CommandLineTools/SDKs/MacOSX.sdk -DMATLAB_MEX_FILE -O2 -fwrapv -DNDEBUG -std=c99 -I \".\" -I \"/Users/yuhan/Desktop/Dr_Liu_Works/0-文章/0-进行中/2022-Automatica/Response to the reviewers_Automaica_2023/code for Automatica 2022-varGP-new\" -I \"./interface\" -I \"/Applications/MATLAB_R2021b.app/extern/include\" -I \".\" -DMODEL=DGP_varsgpPredict_x_c_mex -c  DGP_varsgpPredict_x_c_terminate.c -o build/maci64/DGP_varsgpPredict_x_c_terminate.o",
+    "file": "DGP_varsgpPredict_x_c_terminate.c",
+    "output": "build/maci64/DGP_varsgpPredict_x_c_terminate.o"
+  },
+  {
+    "directory": "/Users/yuhan/Desktop/Dr_Liu_Works/0-文章/0-进行中/2022-Automatica/Response to the reviewers_Automaica_2023/code for Automatica 2022-varGP-new/codegen/mex/DGP_varsgpPredict_x_c",
+    "command": "/usr/bin/xcrun -sdk macosx12.3 clang -fno-common -arch x86_64 -mmacosx-version-min=10.15 -fexceptions -isysroot /Library/Developer/CommandLineTools/SDKs/MacOSX.sdk -DMATLAB_MEX_FILE -O2 -fwrapv -DNDEBUG -std=c99 -I \".\" -I \"/Users/yuhan/Desktop/Dr_Liu_Works/0-文章/0-进行中/2022-Automatica/Response to the reviewers_Automaica_2023/code for Automatica 2022-varGP-new\" -I \"./interface\" -I \"/Applications/MATLAB_R2021b.app/extern/include\" -I \".\" -DMODEL=DGP_varsgpPredict_x_c_mex -c  DGP_varsgpPredict_x_c.c -o build/maci64/DGP_varsgpPredict_x_c.o",
+    "file": "DGP_varsgpPredict_x_c.c",
+    "output": "build/maci64/DGP_varsgpPredict_x_c.o"
+  },
+  {
+    "directory": "/Users/yuhan/Desktop/Dr_Liu_Works/0-文章/0-进行中/2022-Automatica/Response to the reviewers_Automaica_2023/code for Automatica 2022-varGP-new/codegen/mex/DGP_varsgpPredict_x_c",
+    "command": "/usr/bin/xcrun -sdk macosx12.3 clang -fno-common -arch x86_64 -mmacosx-version-min=10.15 -fexceptions -isysroot /Library/Developer/CommandLineTools/SDKs/MacOSX.sdk -DMATLAB_MEX_FILE -O2 -fwrapv -DNDEBUG -std=c99 -I \".\" -I \"/Users/yuhan/Desktop/Dr_Liu_Works/0-文章/0-进行中/2022-Automatica/Response to the reviewers_Automaica_2023/code for Automatica 2022-varGP-new\" -I \"./interface\" -I \"/Applications/MATLAB_R2021b.app/extern/include\" -I \".\" -DMODEL=DGP_varsgpPredict_x_c_mex -c  mtimes.c -o build/maci64/mtimes.o",
+    "file": "mtimes.c",
+    "output": "build/maci64/mtimes.o"
+  },
+  {
+    "directory": "/Users/yuhan/Desktop/Dr_Liu_Works/0-文章/0-进行中/2022-Automatica/Response to the reviewers_Automaica_2023/code for Automatica 2022-varGP-new/codegen/mex/DGP_varsgpPredict_x_c",
+    "command": "/usr/bin/xcrun -sdk macosx12.3 clang -fno-common -arch x86_64 -mmacosx-version-min=10.15 -fexceptions -isysroot /Library/Developer/CommandLineTools/SDKs/MacOSX.sdk -DMATLAB_MEX_FILE -O2 -fwrapv -DNDEBUG -std=c99 -I \".\" -I \"/Users/yuhan/Desktop/Dr_Liu_Works/0-文章/0-进行中/2022-Automatica/Response to the reviewers_Automaica_2023/code for Automatica 2022-varGP-new\" -I \"./interface\" -I \"/Applications/MATLAB_R2021b.app/extern/include\" -I \".\" -DMODEL=DGP_varsgpPredict_x_c_mex -c  warning.c -o build/maci64/warning.o",
+    "file": "warning.c",
+    "output": "build/maci64/warning.o"
+  },
+  {
+    "directory": "/Users/yuhan/Desktop/Dr_Liu_Works/0-文章/0-进行中/2022-Automatica/Response to the reviewers_Automaica_2023/code for Automatica 2022-varGP-new/codegen/mex/DGP_varsgpPredict_x_c",
+    "command": "/usr/bin/xcrun -sdk macosx12.3 clang -fno-common -arch x86_64 -mmacosx-version-min=10.15 -fexceptions -isysroot /Library/Developer/CommandLineTools/SDKs/MacOSX.sdk -DMATLAB_MEX_FILE -O2 -fwrapv -DNDEBUG -std=c99 -I \".\" -I \"/Users/yuhan/Desktop/Dr_Liu_Works/0-文章/0-进行中/2022-Automatica/Response to the reviewers_Automaica_2023/code for Automatica 2022-varGP-new\" -I \"./interface\" -I \"/Applications/MATLAB_R2021b.app/extern/include\" -I \".\" -DMODEL=DGP_varsgpPredict_x_c_mex -c  det.c -o build/maci64/det.o",
+    "file": "det.c",
+    "output": "build/maci64/det.o"
+  },
+  {
+    "directory": "/Users/yuhan/Desktop/Dr_Liu_Works/0-文章/0-进行中/2022-Automatica/Response to the reviewers_Automaica_2023/code for Automatica 2022-varGP-new/codegen/mex/DGP_varsgpPredict_x_c",
+    "command": "/usr/bin/xcrun -sdk macosx12.3 clang -fno-common -arch x86_64 -mmacosx-version-min=10.15 -fexceptions -isysroot /Library/Developer/CommandLineTools/SDKs/MacOSX.sdk -DMATLAB_MEX_FILE -O2 -fwrapv -DNDEBUG -std=c99 -I \".\" -I \"/Users/yuhan/Desktop/Dr_Liu_Works/0-文章/0-进行中/2022-Automatica/Response to the reviewers_Automaica_2023/code for Automatica 2022-varGP-new\" -I \"./interface\" -I \"/Applications/MATLAB_R2021b.app/extern/include\" -I \".\" -DMODEL=DGP_varsgpPredict_x_c_mex -c  sum.c -o build/maci64/sum.o",
+    "file": "sum.c",
+    "output": "build/maci64/sum.o"
+  },
+  {
+    "directory": "/Users/yuhan/Desktop/Dr_Liu_Works/0-文章/0-进行中/2022-Automatica/Response to the reviewers_Automaica_2023/code for Automatica 2022-varGP-new/codegen/mex/DGP_varsgpPredict_x_c",
+    "command": "/usr/bin/xcrun -sdk macosx12.3 clang -fno-common -arch x86_64 -mmacosx-version-min=10.15 -fexceptions -isysroot /Library/Developer/CommandLineTools/SDKs/MacOSX.sdk -DMATLAB_MEX_FILE -O2 -fwrapv -DNDEBUG -std=c99 -I \".\" -I \"/Users/yuhan/Desktop/Dr_Liu_Works/0-文章/0-进行中/2022-Automatica/Response to the reviewers_Automaica_2023/code for Automatica 2022-varGP-new\" -I \"./interface\" -I \"/Applications/MATLAB_R2021b.app/extern/include\" -I \".\" -DMODEL=DGP_varsgpPredict_x_c_mex -c  sumMatrixIncludeNaN.c -o build/maci64/sumMatrixIncludeNaN.o",
+    "file": "sumMatrixIncludeNaN.c",
+    "output": "build/maci64/sumMatrixIncludeNaN.o"
+  },
+  {
+    "directory": "/Users/yuhan/Desktop/Dr_Liu_Works/0-文章/0-进行中/2022-Automatica/Response to the reviewers_Automaica_2023/code for Automatica 2022-varGP-new/codegen/mex/DGP_varsgpPredict_x_c",
+    "command": "/usr/bin/xcrun -sdk macosx12.3 clang -fno-common -arch x86_64 -mmacosx-version-min=10.15 -fexceptions -isysroot /Library/Developer/CommandLineTools/SDKs/MacOSX.sdk -DMATLAB_MEX_FILE -O2 -fwrapv -DNDEBUG -std=c99 -I \".\" -I \"/Users/yuhan/Desktop/Dr_Liu_Works/0-文章/0-进行中/2022-Automatica/Response to the reviewers_Automaica_2023/code for Automatica 2022-varGP-new\" -I \"./interface\" -I \"/Applications/MATLAB_R2021b.app/extern/include\" -I \".\" -DMODEL=DGP_varsgpPredict_x_c_mex -c  interface/_coder_DGP_varsgpPredict_x_c_api.c -o build/maci64/_coder_DGP_varsgpPredict_x_c_api.o",
+    "file": "interface/_coder_DGP_varsgpPredict_x_c_api.c",
+    "output": "build/maci64/_coder_DGP_varsgpPredict_x_c_api.o"
+  },
+  {
+    "directory": "/Users/yuhan/Desktop/Dr_Liu_Works/0-文章/0-进行中/2022-Automatica/Response to the reviewers_Automaica_2023/code for Automatica 2022-varGP-new/codegen/mex/DGP_varsgpPredict_x_c",
+    "command": "/usr/bin/xcrun -sdk macosx12.3 clang -fno-common -arch x86_64 -mmacosx-version-min=10.15 -fexceptions -isysroot /Library/Developer/CommandLineTools/SDKs/MacOSX.sdk -DMATLAB_MEX_FILE -O2 -fwrapv -DNDEBUG -std=c99 -I \".\" -I \"/Users/yuhan/Desktop/Dr_Liu_Works/0-文章/0-进行中/2022-Automatica/Response to the reviewers_Automaica_2023/code for Automatica 2022-varGP-new\" -I \"./interface\" -I \"/Applications/MATLAB_R2021b.app/extern/include\" -I \".\" -DMODEL=DGP_varsgpPredict_x_c_mex -c  interface/_coder_DGP_varsgpPredict_x_c_mex.c -o build/maci64/_coder_DGP_varsgpPredict_x_c_mex.o",
+    "file": "interface/_coder_DGP_varsgpPredict_x_c_mex.c",
+    "output": "build/maci64/_coder_DGP_varsgpPredict_x_c_mex.o"
+  },
+  {
+    "directory": "/Users/yuhan/Desktop/Dr_Liu_Works/0-文章/0-进行中/2022-Automatica/Response to the reviewers_Automaica_2023/code for Automatica 2022-varGP-new/codegen/mex/DGP_varsgpPredict_x_c",
+    "command": "/usr/bin/xcrun -sdk macosx12.3 clang -fno-common -arch x86_64 -mmacosx-version-min=10.15 -fexceptions -isysroot /Library/Developer/CommandLineTools/SDKs/MacOSX.sdk -DMATLAB_MEX_FILE -O2 -fwrapv -DNDEBUG -std=c99 -I \".\" -I \"/Users/yuhan/Desktop/Dr_Liu_Works/0-文章/0-进行中/2022-Automatica/Response to the reviewers_Automaica_2023/code for Automatica 2022-varGP-new\" -I \"./interface\" -I \"/Applications/MATLAB_R2021b.app/extern/include\" -I \".\" -DMODEL=DGP_varsgpPredict_x_c_mex -c  mldivide.c -o build/maci64/mldivide.o",
+    "file": "mldivide.c",
+    "output": "build/maci64/mldivide.o"
+  },
+  {
+    "directory": "/Users/yuhan/Desktop/Dr_Liu_Works/0-文章/0-进行中/2022-Automatica/Response to the reviewers_Automaica_2023/code for Automatica 2022-varGP-new/codegen/mex/DGP_varsgpPredict_x_c",
+    "command": "/usr/bin/xcrun -sdk macosx12.3 clang -fno-common -arch x86_64 -mmacosx-version-min=10.15 -fexceptions -isysroot /Library/Developer/CommandLineTools/SDKs/MacOSX.sdk -DMATLAB_MEX_FILE -O2 -fwrapv -DNDEBUG -std=c99 -I \".\" -I \"/Users/yuhan/Desktop/Dr_Liu_Works/0-文章/0-进行中/2022-Automatica/Response to the reviewers_Automaica_2023/code for Automatica 2022-varGP-new\" -I \"./interface\" -I \"/Applications/MATLAB_R2021b.app/extern/include\" -I \".\" -DMODEL=DGP_varsgpPredict_x_c_mex -c  xzgetrf.c -o build/maci64/xzgetrf.o",
+    "file": "xzgetrf.c",
+    "output": "build/maci64/xzgetrf.o"
+  },
+  {
+    "directory": "/Users/yuhan/Desktop/Dr_Liu_Works/0-文章/0-进行中/2022-Automatica/Response to the reviewers_Automaica_2023/code for Automatica 2022-varGP-new/codegen/mex/DGP_varsgpPredict_x_c",
+    "command": "/usr/bin/xcrun -sdk macosx12.3 clang -fno-common -arch x86_64 -mmacosx-version-min=10.15 -fexceptions -isysroot /Library/Developer/CommandLineTools/SDKs/MacOSX.sdk -DMATLAB_MEX_FILE -O2 -fwrapv -DNDEBUG -std=c99 -I \".\" -I \"/Users/yuhan/Desktop/Dr_Liu_Works/0-文章/0-进行中/2022-Automatica/Response to the reviewers_Automaica_2023/code for Automatica 2022-varGP-new\" -I \"./interface\" -I \"/Applications/MATLAB_R2021b.app/extern/include\" -I \".\" -DMODEL=DGP_varsgpPredict_x_c_mex -c  eml_int_forloop_overflow_check.c -o build/maci64/eml_int_forloop_overflow_check.o",
+    "file": "eml_int_forloop_overflow_check.c",
+    "output": "build/maci64/eml_int_forloop_overflow_check.o"
+  },
+  {
+    "directory": "/Users/yuhan/Desktop/Dr_Liu_Works/0-文章/0-进行中/2022-Automatica/Response to the reviewers_Automaica_2023/code for Automatica 2022-varGP-new/codegen/mex/DGP_varsgpPredict_x_c",
+    "command": "/usr/bin/xcrun -sdk macosx12.3 clang -fno-common -arch x86_64 -mmacosx-version-min=10.15 -fexceptions -isysroot /Library/Developer/CommandLineTools/SDKs/MacOSX.sdk -DMATLAB_MEX_FILE -O2 -fwrapv -DNDEBUG -std=c99 -I \".\" -I \"/Users/yuhan/Desktop/Dr_Liu_Works/0-文章/0-进行中/2022-Automatica/Response to the reviewers_Automaica_2023/code for Automatica 2022-varGP-new\" -I \"./interface\" -I \"/Applications/MATLAB_R2021b.app/extern/include\" -I \".\" -DMODEL=DGP_varsgpPredict_x_c_mex -c  interface/_coder_DGP_varsgpPredict_x_c_info.c -o build/maci64/_coder_DGP_varsgpPredict_x_c_info.o",
+    "file": "interface/_coder_DGP_varsgpPredict_x_c_info.c",
+    "output": "build/maci64/_coder_DGP_varsgpPredict_x_c_info.o"
+  },
+  {
+    "directory": "/Users/yuhan/Desktop/Dr_Liu_Works/0-文章/0-进行中/2022-Automatica/Response to the reviewers_Automaica_2023/code for Automatica 2022-varGP-new/codegen/mex/DGP_varsgpPredict_x_c",
+    "command": "/usr/bin/xcrun -sdk macosx12.3 clang -fno-common -arch x86_64 -mmacosx-version-min=10.15 -fexceptions -isysroot /Library/Developer/CommandLineTools/SDKs/MacOSX.sdk -DMATLAB_MEX_FILE -O2 -fwrapv -DNDEBUG -std=c99 -I \".\" -I \"/Users/yuhan/Desktop/Dr_Liu_Works/0-文章/0-进行中/2022-Automatica/Response to the reviewers_Automaica_2023/code for Automatica 2022-varGP-new\" -I \"./interface\" -I \"/Applications/MATLAB_R2021b.app/extern/include\" -I \".\" -DMODEL=DGP_varsgpPredict_x_c_mex -c  /Applications/MATLAB_R2021b.app/extern/version/c_mexapi_version.c -o build/maci64/c_mexapi_version.o",
+    "file": "/Applications/MATLAB_R2021b.app/extern/version/c_mexapi_version.c",
+    "output": "build/maci64/c_mexapi_version.o"
+  }
+]

@@ -26,55 +26,76 @@ PARAMS.DRIVERID_GROUP = [1, 6];
 
 stochasticClusters = clusterDrivers();
 
-for refDriverID = 1:2
-    pathToParams = "C:\git\KDP\publications\GP\results\sparseGP_chosenParams\kpis";
-    paramGP = dir(fullfile(pathToParams,"ETA_*"));
-    driverID_ = PARAMS.DRIVERID_GROUP(refDriverID);
-    for fileID = 1:length(paramGP)
-        paramDriverID = str2num(paramGP(fileID).name(strfind(paramGP(fileID).name, 'driver_')+7:strfind(paramGP(fileID).name, '.')-1));
-        if (paramDriverID == driverID_)
-            paramData = load(fullfile(paramGP(fileID).folder, paramGP(fileID).name));
-            for npID=1:10
-                GP_params.hyp_opt_array{npID} = paramData.ETA(npID).hyp_opt;
-                GP_params.output_estimation{npID} = paramData.ETA(npID).output_estimation;
-                GP_params.input_estimation{npID} = paramData.ETA(npID).input_estimation;
-            end
-            c_in = paramData.ETA(npID).normFactors(1:7); % common for all GPs
-            c_out(1:10) = paramData.ETA(npID).normFactors(15); % one at each node point
-            s_in = paramData.ETA(npID).normFactors(8:14); % common for all GPs
-            s_out = paramData.ETA(npID).normFactors(16:25); % one at each node point
-            break;
-        end
-    end
-                        
-    for driverID = 1:size(segments.segments,2)
-        DRIVER_ID_IF_NOT_MERGED = driverID;
-        segment = segments.segments(DRIVER_ID_IF_NOT_MERGED).segment;
-        name = segments.segments(DRIVER_ID_IF_NOT_MERGED).name;
-        % transforming the struct to array for lower calculation time
-        [~, segment_m, indexes] = prepareInputForPlanner(segment);    
-            
-        [~, ~, inputRaw, outputRaw] = prepareData(segment_m, indexes, PARAMS);
-        clear input output 
-        for i=1:size(inputRaw,2)
-            input(:,i) = (inputRaw(:,i)-c_in(i))/s_in(i);
-        end
-        for i=1:size(outputRaw,2)
-            output(:,i) = (outputRaw(:,i)-c_out(i))/s_out(i);
-        end
-        
-        [estimationGP, deviationGP] = resimulateTimeSequence (input, GP_params, PARAMS);
+f = figure('Position',[100 100 1200 480]);
+set(f,'defaulttextInterpreter','latex') ;
+set(f, 'defaultAxesTickLabelInterpreter','latex');  
+set(f, 'defaultLegendInterpreter','latex');
+%% Additional functionality: check traffic dependent offset selection
+for i=1:size(segments.segments,2)-2
+    segment = segments.segments(i).segment;
+    name = segments.segments(i).name;
+    [~, segment_m, indexes] = prepareInputForPlanner(segment);
+    subplot(1,3,1);
+    [N,X]= hist(-segment_m(segment_m(:,indexes.OncomingTrafficType)==0, indexes.c0), 20);
+    KPI(i,:,1) = [mean(-segment_m(segment_m(:,indexes.OncomingTrafficType)==0, indexes.c0)), std(-segment_m(segment_m(:,indexes.OncomingTrafficType)==0, indexes.c0))];
+    plot(X,N/numel(find(segment_m(:,indexes.OncomingTrafficType)==0)),'DisplayName', name(1:5), 'Marker', '.');
+    hold on;
+    xline(mean(-segment_m(segment_m(:,indexes.OncomingTrafficType)==0, indexes.c0)), 'LineWidth', 1.5, 'HandleVisibility','off');
+    grid on;
+    ylim([0,1]);
+    xlim([-1,1]);
 
-        % error calculation
-        e = [];
-        for i=1:length(estimationGP)
-            e = [e; estimationGP{i}-output(:,i)];
-        end
-        error(refDriverID,driverID) = norm(e,2);
-    
-        %f = plotOffsets(estimationGP, deviationGP, segment_m, indexes, 1, outputRaw, s_in, c_in, s_out, c_out, driverID);
-    end
+    subplot(1,3,2);
+    [N,X]= hist(-segment_m(segment_m(:,indexes.OncomingTrafficType)==1, indexes.c0), 20);
+    KPI(i,:,2) = [mean(-segment_m(segment_m(:,indexes.OncomingTrafficType)==1, indexes.c0)), std(-segment_m(segment_m(:,indexes.OncomingTrafficType)==1, indexes.c0))];
+    plot(X,N/numel(find(segment_m(:,indexes.OncomingTrafficType)==1)),'DisplayName', name(1:5), 'Marker', '.');
+    hold on;
+    xline(mean(-segment_m(segment_m(:,indexes.OncomingTrafficType)==1, indexes.c0)), 'LineWidth', 1.5, 'HandleVisibility','off');
+    grid on;
+    ylim([0,1]);
+    xlim([-1,1]);
+
+    subplot(1,3,3);
+    [N,X]= hist(-segment_m(segment_m(:,indexes.OncomingTrafficType)>1, indexes.c0), 20);
+    KPI(i,:,3) = [mean(-segment_m(segment_m(:,indexes.OncomingTrafficType)>1, indexes.c0)), std(-segment_m(segment_m(:,indexes.OncomingTrafficType)>1, indexes.c0))];
+    plot(X,N/numel(find(segment_m(:,indexes.OncomingTrafficType)>1)),'DisplayName', name(1:5), 'Marker', '.');
+    hold on;
+    xline(mean(-segment_m(segment_m(:,indexes.OncomingTrafficType)>1, indexes.c0)), 'LineWidth', 1.5, 'HandleVisibility','off');
+    grid on;
+    ylim([0,1]);
+    xlim([-1,1]);    
 end
+subplot(1,3,1); legend; title("$p(\delta| o_t=0)$");
+subplot(1,3,2); legend; title("$p(\delta| o_t=1)$");
+subplot(1,3,3); legend; title("$p(\delta| o_t>1)$");
+
+f2 = figure('Position',[100 100 600 480]);
+set(f2,'defaulttextInterpreter','latex') ;
+set(f2, 'defaultAxesTickLabelInterpreter','latex');  
+set(f2, 'defaultLegendInterpreter','latex');
+
+confidencePoints = [1:1:numel(KPI(:,1,1)) flip(1:1:numel(KPI(:,1,1)))];
+confidenceBounds = [KPI(:,1,1)+2*sqrt(KPI(:,2,1)); KPI(:,1,1)-2*sqrt(KPI(:,2,1))];
+fill(confidencePoints', confidenceBounds, 'b', 'DisplayName', '95\% confidence', 'FaceAlpha',0.1);
+
+hold on
+
+confidencePoints = [1:1:numel(KPI(:,1,2)) flip(1:1:numel(KPI(:,1,2)))];
+confidenceBounds = [KPI(:,1,2)+2*sqrt(KPI(:,2,2)); KPI(:,1,2)-2*sqrt(KPI(:,2,2))];
+fill(confidencePoints', confidenceBounds, 'm', 'DisplayName', '95\% confidence', 'FaceAlpha',0.1);
+
+confidencePoints = [1:1:numel(KPI(:,1,3)) flip(1:1:numel(KPI(:,1,3)))];
+confidenceBounds = [KPI(:,1,3)+2*sqrt(KPI(:,2,3)); KPI(:,1,3)-2*sqrt(KPI(:,2,3))];
+fill(confidencePoints', confidenceBounds, 'r', 'DisplayName', '95\% confidence', 'FaceAlpha',0.1);
+
+plot(KPI(:,1,1), 'b', 'DisplayName', 'Free driving', 'LineWidth', 2);
+plot(KPI(:,1,2), 'm', 'DisplayName', 'Small oncoming vehicle', 'LineWidth', 2)
+plot(KPI(:,1,3), 'r', 'DisplayName', 'Truck oncoming vehicle', 'LineWidth', 2)
+grid on
+set(gca,"FontSize", 14);
+legend('Location','best', 'FontSize',10);
+xlabel('Driver ID'); ylabel('$\delta(m)$');
+
 
 %% SUPPORT FUNCTIONS
 function [estimationGP, deviationGP, estimationLRM, estimationLDM] = resimulateTimeSequence (input_validation, GP_params, PARAMS)
@@ -92,14 +113,15 @@ function [estimationGP, deviationGP, estimationLRM, estimationLDM] = resimulateT
 end
 
 function c = clusterDrivers()
-    pathToParams = "C:\git\KDP\publications\GP\results\sparseGP_chosenParams\kpis";
+    %pathToParams = "C:\git\KDP\publications\GP\results\sparseGP_chosenParams\kpis";
+    pathToParams = "C:\git\KDP\publications\GP\results\sparseGP_fixedAcceleration\12drivers\kpis";
     paramGP = dir(fullfile(pathToParams,"ETA_*"));
     for fileID = 1:length(paramGP)
         paramDriverID = str2num(paramGP(fileID).name(strfind(paramGP(fileID).name, 'driver_')+7:strfind(paramGP(fileID).name, '.')-1));
         paramData = load(fullfile(paramGP(fileID).folder, paramGP(fileID).name));
         N = length(paramData.ETA(1).hyp_opt.cov)-1; % -1: sigma_f is excluded
         for npID=1:10
-            GP_params((npID-1)*N+1:npID*N, paramDriverID) = exp(paramData.ETA(npID).hyp_opt.cov(1:end-1))'; % columns are the parameters of one driver
+            GP_params((npID-1)*N+1:npID*N, paramDriverID) = (paramData.ETA(npID).hyp_opt.cov(1:end-1))'; % columns are the parameters of one driver
         end
     end
     % cluster

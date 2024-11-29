@@ -43,10 +43,11 @@ PARAMS.DriverID = 4;
 PARAMS.FILTER_OUTPUT = false;
 
 parameters.PARAMS = PARAMS;
+firstRun = true;
 
 switch SIMULATION_MODE
     case "SYNTHETIC_SIMULATION"
-        colors = ["r", "b", "c", "g", "k", "m", "r--", "b--"];
+        colors = ["r", "b", "c", "g", "k", "m", "r--", "b--", "c--"];
         for segmentID = 1:length(segments.segments)
             segment = segments.segments(segmentID).segment;
             name = segments.segments(segmentID).name;
@@ -55,10 +56,18 @@ switch SIMULATION_MODE
             modelMode = "kinematic";
             modelID = "gp";
             
-            for driverID=1:8 % currently static as driver parameter read happens inside subfunction!
-                parameters.PARAMS.DriverID = driverID;
-                %% GPM          
-                [estimation, deviation, inputRaw] = gpGenerateEstimate(segment_m, indexes);
+            for driverID=3:4 % currently static as driver parameter read happens inside subfunction!
+                if (~firstRun)
+                    parameters.PARAMS.DriverID = driverID-1;
+                else
+                    parameters.PARAMS.DriverID = driverID;
+                end
+                %% GPM
+                if (~firstRun)
+                    [estimation, deviation, inputRaw] = gpGenerateEstimate(segment_m, indexes, [1 1 0 0 0 0 0]);
+                else
+                    [estimation, deviation, inputRaw] = gpGenerateEstimate(segment_m, indexes, zeros(1,7));
+                end
                 segment_m(:,end+1:end+10) = estimation;
                 indexes.GP_1 = size(segment_m,2)-9;
                 indexes.GP_10 = size(segment_m,2);
@@ -77,6 +86,9 @@ switch SIMULATION_MODE
                 offsetRef = offsetCalculation(corFine, refFine);
         
                 offsets{driverID}.offset = offsetPath; offsets{driverID}.name = strcat('GPM-Dr', num2str(driverID)); offsets{driverID}.X = path(:,1); offsets{driverID}.marker = colors(driverID);
+                if (firstRun)
+                    firstRun = false;
+                end
             end
             f = plot_offsetPlotsExtended(segment_m,indexes,offsets,[], inputRaw);
             temp_folder_path = "../../_temp";
@@ -89,7 +101,7 @@ switch SIMULATION_MODE
         end
 
     case "SINGLE_SIMULATION"
-        load('C:\database\KDP_HLB_GP\Dr008_Dr023_input_GP.mat');
+        load('C:\database\KDP_HLB_GP\Dr008_Dr023_input_GP_fixedAcceleration.mat');
         segment = segments.segments(PARAMS.DriverID).segment;
         name = segments.segments(PARAMS.DriverID).name;
         %segment = segments.segments(1).segment;
@@ -256,7 +268,6 @@ switch SIMULATION_MODE
             modelMode = "kinematic";
         
             [path, U, dY, ~, intentionPath] = pathGeneration();
-            parameters.P_ELDM = reshape(functional_driverModelLearning(U, dY ,8), 3,7);
         
             parameters_out(i).U = U/0.001;
             parameters_out(i).dY = dY;
@@ -293,7 +304,7 @@ switch SIMULATION_MODE
         normalizedParams = parameterRawData(1:18,:)/max(max(abs(parameterRawData(1:18,:))));
         normalizedParams = [normalizedParams; parameterRawData(19,:)/max(abs(parameterRawData(19,:)))];
 
-        [driverClusters,~,sumD] = kmeans(normalizedParams',K, 'Distance','sqeuclidean', 'MaxIter', 1000, 'Replicates',10); 
+        [driverClusters,~,sumD] = kmeans(normalizedParams(1:18,:)',K, 'Distance','sqeuclidean', 'MaxIter', 1000, 'Replicates',10); 
         dataOut.driverClusters = driverClusters;
         f = figure(5);
         set(f,'defaulttextInterpreter','latex') ;
@@ -1056,14 +1067,14 @@ function [path, u, dy] = groundTruth (scenario, indexes, previousPath, filtered)
     path = pathPlannerFrame*Tplanner + plannerFrame(1:2);
 end
 
-function [estimation, deviation, inputRaw] = gpGenerateEstimate(segment_m, indexes)
+function [estimation, deviation, inputRaw] = gpGenerateEstimate(segment_m, indexes, eliminatedInputs)
 global parameters
     %% step 0: generate input data
     [~, ~, inputRaw, outputRaw] = prepareData(segment_m, indexes, parameters.PARAMS);
     
     %% step 1: parameter loading
     % read the learnt data from previous runs
-    pathToParams = "C:\git\KDP\publications\GP\results\sparseGP_chosenParams\kpis";
+    pathToParams = "C:\git\KDP\publications\GP\results\sparseGP_fixedAcceleration\kpis";
     paramGP = dir(fullfile(pathToParams,"ETA_*"));
 
     for fileID = 1:length(paramGP)
@@ -1075,10 +1086,17 @@ global parameters
                 GP_params.output_estimation{npID} = paramData.ETA(npID).output_estimation;
                 GP_params.input_estimation{npID} = paramData.ETA(npID).input_estimation;
             end
-            c_in = paramData.ETA(npID).normFactors(1:7); % common for all GPs
-            s_in = paramData.ETA(npID).normFactors(8:14); % common for all GPs
-            c_out(1:10) = paramData.ETA(npID).normFactors(15); % one at each node point
-            s_out = paramData.ETA(npID).normFactors(16:25); % one at each node point
+            if (isfield(paramData.ETA(npID).normFactors, 'c_in'))
+                c_in = paramData.ETA(npID).normFactors.c_in; % common for all GPs
+                s_in = paramData.ETA(npID).normFactors.s_in; % common for all GPs
+                c_out(1:10) = paramData.ETA(npID).normFactors.c_out; % one at each node point
+                s_out = paramData.ETA(npID).normFactors.s_out; % one at each node point
+            else
+                c_in = paramData.ETA(npID).normFactors(1:7); % common for all GPs
+                s_in = paramData.ETA(npID).normFactors(8:14); % common for all GPs
+                c_out(1:10) = paramData.ETA(npID).normFactors(15); % one at each node point
+                s_out = paramData.ETA(npID).normFactors(16:25); % one at each node point
+            end
             break;
         else
             paramData = [];
@@ -1092,6 +1110,8 @@ global parameters
     for i=1:size(outputRaw,2)
         output(:,i) = (outputRaw(:,i)-c_out(i))/s_out(i);
     end
+
+    input(:,eliminatedInputs==1) = 0;
 
     %% step 4: generate output
     meanfunc = [];       % Start with a zero mean prior

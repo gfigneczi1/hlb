@@ -1,6 +1,7 @@
 function f = plot_offsetPlotsExtended(segment_m,indexes,offsets, driverID, input)
 
     relSegment = [0, 1200];
+    relSegment = [1.4185e6, 1.4205e6];
     dx = mean(diff(segment_m(:,indexes.X_abs)));
     X_abs = segment_m(:,indexes.X_abs);
 
@@ -38,7 +39,9 @@ function f = plot_offsetPlotsExtended(segment_m,indexes,offsets, driverID, input
         end
     end
     for i=1:length(offsets)
-        plot(offsets{i}.X, offsets{i}.offset, offsets{i}.marker,  'LineWidth', 1.5, 'DisplayName', offsets{i}.name);
+        if (~isempty(offsets{i}))
+            plot(offsets{i}.X, offsets{i}.offset, offsets{i}.marker,  'LineWidth', 1.5, 'DisplayName', offsets{i}.name);
+        end
     end
     xlabel('X-UTM(m)'); ylabel("$\delta(m)$");
     yline(0, "HandleVisibility","off", 'Alpha',0.3, 'Color','k', 'LineWidth',3);

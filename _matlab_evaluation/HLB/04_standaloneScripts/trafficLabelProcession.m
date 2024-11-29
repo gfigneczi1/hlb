@@ -1,6 +1,6 @@
 clear;
-pathToCsv = "C:\git\KDP\HLB_for_AV_MotionControl\02_Results\MassMeasurements\Dr015\Dr015_trafficLabelsSecs.xlsx";
-pathToMat = 'C:\git\KDP\HLB_for_AV_MotionControl\02_Results\MassMeasurements\Dr015\Dr015_2022-11-30_62B.mat';
+pathToCsv = "C:\git\KDP\HLB_for_AV_MotionControl\02_Results\MassMeasurements\Dr022\Dr022_trafficLabelsSecs.xlsx";
+pathToMat = 'C:\git\KDP\HLB_for_AV_MotionControl\02_Results\MassMeasurements\Dr022\Dr022_62A_2024-10-17.mat_extended.mat';
 
 %% Mapping of object types
 % 1 - normal, convoy-normal
@@ -30,14 +30,14 @@ for i=1:size(traffic,1)
         startTime = find(segment.q_T0 > traffic.trafficStart(i), 1);
         endTime = find(segment.q_T0 > traffic.trafficEnd(i), 1);
         oncomingTraffic(startTime:endTime) = 1;
+    elseif(contains(convertCharsToStrings(traffic.objType{i}), "convoy"))
+        startTime = find(segment.q_T0 > traffic.trafficStart(i), 1);
+        endTime = find(segment.q_T0 > traffic.trafficEnd(i), 1);
+        oncomingTraffic(startTime:endTime) = 3;
     elseif(contains(convertCharsToStrings(traffic.objType{i}), "truck"))
         startTime = find(segment.q_T0 > traffic.trafficStart(i), 1);
         endTime = find(segment.q_T0 > traffic.trafficEnd(i), 1);
         oncomingTraffic(startTime:endTime) = 2;
-    elseif(contains(convertCharsToStrings(traffic.objType{i}), "mixed"))
-        startTime = find(segment.q_T0 > traffic.trafficStart(i), 1);
-        endTime = find(segment.q_T0 > traffic.trafficEnd(i), 1);
-        oncomingTraffic(startTime:endTime) = 3;
     elseif(contains(convertCharsToStrings(traffic.objType{i}), "in overtake"))
         startTime = find(segment.q_T0 > traffic.trafficStart(i), 1);
         endTime = find(segment.q_T0 > traffic.trafficEnd(i), 1);

@@ -3,7 +3,7 @@
 % of multiple drivers. Config is a metadata struct containing information
 % about e.g., the plot folders
 close all; clear;
-load('C:\database\KDP_HLB_GP\Dr008_Dr023_input_GP.mat');
+load('sparseGP\Dr008_Dr027_input_GP.mat');
 config.root = "./";
 
 MAXIMUM_INPUT_SIZE = 15000; % before snipetting and normalization
@@ -16,7 +16,7 @@ GENERATE_OFFSET_TIME_PLOTS = false;
 MAXIMUM_PREVIEW_DISTANCE = 150; % from within preview information is extracted, unit: m
 OUTPUT_STEP_DISTANCE = 10; % in meters
 NUMBER_OF_PREVIEW_INFORMATION = 2; % maximum number
-OUTPUT_SHIFT = linspace(15,MAXIMUM_PREVIEW_DISTANCE,10); %10:OUTPUT_STEP_DISTANCE:MAXIMUM_PREVIEW_DISTANCE; % preview distance is divided into sections where the output will be predicted
+OUTPUT_SHIFT = 15; % linspace(15,MAXIMUM_PREVIEW_DISTANCE,10); %10:OUTPUT_STEP_DISTANCE:MAXIMUM_PREVIEW_DISTANCE; % preview distance is divided into sections where the output will be predicted
 MERGE_DATA_TABLES = false;
 DRIVER_ID_IF_NOT_MERGED = 1;
 SIMPLIFICATION_RATIO = 1;
@@ -34,7 +34,7 @@ I = -1*(eye(8)-1);
 
 epss = [0.9, 0.5, 0.3, 0.275];
 
-iterationPool = [5,10,20];
+iterationPool = [5,10,20, 50, 100];
 validationTrainRatioPlot = [0.3, 0.4, 0.5, 0.7];
 
 kernels = ["@covSEard", ...
@@ -95,7 +95,7 @@ set(0,'DefaultFigureVisible','off');
 shiftOnOutputSelection = OUTPUT_SHIFT;  %shift the offset in time (positive means shift forward)
 p = RATIO_OF_TRAIN_VS_TOTAL; %percentage of evaluation data from entire dataset
 
-for driverID = 1:size(segments.segments,2)-2
+for driverID = 1:size(segments.segments,2)
     DRIVER_ID_IF_NOT_MERGED = driverID;
     segment = segments.segments(DRIVER_ID_IF_NOT_MERGED).segment;
     name = segments.segments(DRIVER_ID_IF_NOT_MERGED).name;
@@ -105,9 +105,9 @@ for driverID = 1:size(segments.segments,2)-2
 for kernelID = 1:1 %size(iterationPool,2)
     usedInput = usedInputs(1,:);
     eps = epss(4);
-    MAX_NUMBER_ITERATIONS = iterationPool(2);
-    KERNEL_TYPE = kernels(4);
-    p = validationTrainRatioPlot(3);
+    MAX_NUMBER_ITERATIONS = iterationPool(5);
+    KERNEL_TYPE = kernels(3);
+    p = validationTrainRatioPlot(4);
 
     for shiftID=1:numel(OUTPUT_SHIFT)
         tic;

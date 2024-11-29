@@ -38,6 +38,9 @@ function [segments] = segmentor_driverModelSynthetic(input_folder)
             rawData.theta_calc = [rawData.theta_calc(1); rawData.theta_calc];
         end
         rawData.theta_calc = atan(rawData.theta_calc);
+        if (mean(diff(rawData.X_abs))<0)
+            rawData.theta_calc = rawData.theta_calc+pi();
+        end
         rawData.Relative_time = data.relativeTime;
 
         clear data

@@ -11,7 +11,7 @@ addpath(fullfile("..", "library", "gpml-matlab-master", "lik"));
 addpath(fullfile("..", "library", "gpml-matlab-master", "mean"));
 addpath(fullfile("..", "library", "gpml-matlab-master", "prior"));
 addpath(fullfile("..", "library", "gpml-matlab-master", "util"));
-load('Dr008_Dr023_input_GP.mat');
+load('Dr008_Dr027_input_GP.mat');
 if (~exist("plots", 'dir'))
     mkdir("plots");
 else
@@ -26,8 +26,8 @@ else
 end
 
 %% SCRIPT CONFIGURATION
-DRIVER_ID = 1; % possible values: 1,2,3,4,5...etc or []=all drivers simulated
-ITERATE_INDUCTION = false;
+DRIVER_ID = []; % [1, 5, 6, 10, 11, 13]; % possible values: 1,2,3,4,5...etc or []=all drivers simulated
+ITERATE_INDUCTION = true;
 
 %% DATA PIPELINE PARAMETERS
 MAXIMUM_INPUT_SIZE = inf; % before snipetting and normalization
@@ -35,14 +35,18 @@ KERNEL_TYPE = "{'covPPard',3}";
 RATIO_OF_TRAIN_VS_TOTAL = 0.7;
 MAXIMUM_PREVIEW_DISTANCE = 150; % from within preview information is extracted, unit: m
 OUTPUT_SHIFT = linspace(15,MAXIMUM_PREVIEW_DISTANCE,10); %possible values: scalar number or array e.g., linspace(15,MAXIMUM_PREVIEW_DISTANCE,10);
-INDUCED_SIZE = 20; % only applicable if ITERATE_INDUCTION is FALSE
-inductionSizePool = [10, 20, 50, 100, 300]; % only applicable if ITERATE_INDUCTION is TRUE
+INDUCED_SIZE = 100; % only applicable if ITERATE_INDUCTION is FALSE
+inductionSizePool = [10, 20, 50];%, 100, 300, 500, 1000]; % only applicable if ITERATE_INDUCTION is TRUE
 
 variables = ["t_{ot}", "f_{ot}", "v_x", "a_x", "\omega", "\kappa", "d\kappa"];
 
 if (isempty(DRIVER_ID))
-    i0 = 3; i1 = length(segments.segments)-2;
-    fprintf("WARNING: DRIVER ID 0 is not zero, simulating only from driver 3!!!\n");
+    i0 = 9; i1 = length(segments.segments);
+    if (i0~=1)
+        fprintf("WARNING: DRIVER ID 0 is not zero, simulating only from driver 3!!!\n");
+    end
+elseif (~isempty(DRIVER_ID) && length(DRIVER_ID) > 1)
+    i0 = 1; i1 = 1;
 elseif (~isempty(DRIVER_ID) && DRIVER_ID<=length(segments.segments)-2)
     i0 = DRIVER_ID; i1=i0;
 else
@@ -53,12 +57,23 @@ if (~isempty(i0) && ~isempty(i1))
     if (~isempty(DRIVER_ID))
         segmentMerged=segments.segments(DRIVER_ID).segment;
     end
-    for i=i0:i1
-        % loop through segment_ms and concatenate each to the previous one
-        if (i==i0)
-            segmentMerged=segments.segments(i).segment;
-        else
-            segmentMerged=[segmentMerged; segments.segments(i).segment];
+    if (length(DRIVER_ID) > 1)
+        for i=1:length(DRIVER_ID)
+            % loop through segment_ms and concatenate each to the previous one
+            if (i==i0)
+                segmentMerged=segments.segments(DRIVER_ID(i)).segment;
+            else
+                segmentMerged=[segmentMerged; segments.segments(DRIVER_ID(i)).segment];
+            end
+        end
+    else
+        for i=i0:i1
+            % loop through segment_ms and concatenate each to the previous one
+            if (i==i0)
+                segmentMerged=segments.segments(i).segment;
+            else
+                segmentMerged=[segmentMerged; segments.segments(i).segment];
+            end
         end
     end
     [~, segmentMerged_m, indexesMerged] = prepareInputForPlanner(segmentMerged);
@@ -74,7 +89,7 @@ if (~isempty(i0) && ~isempty(i1))
     p = RATIO_OF_TRAIN_VS_TOTAL; %percentage of evaluation data from entire dataset
     
     if (ITERATE_INDUCTION)
-        indSize0 = 1; indSize1 = length(inductionSizePool);
+        indSize0 = 2; indSize1 = 2; %length(inductionSizePool);
     else
         indSize0 = 1; indSize1 = 1;
     end
@@ -83,11 +98,17 @@ if (~isempty(i0) && ~isempty(i1))
             INDUCED_SIZE = inductionSizePool(indSize);
         end
         for driverID = i0:i1
-            segment = segments.segments(driverID).segment;
-            name = segments.segments(driverID).name;
-
-            % transforming the struct to array for lower calculation time
-            [~, segment_m, indexes] = prepareInputForPlanner(segment);
+            if (length(DRIVER_ID)>1)
+                segment_m = segmentMerged_m;
+                indexes = indexesMerged;
+                name = "mergedDrivers";
+            else
+                segment = segments.segments(driverID).segment;
+                name = segments.segments(driverID).name;
+    
+                % transforming the struct to array for lower calculation time
+                [~, segment_m, indexes] = prepareInputForPlanner(segment);
+            end            
             dT = mean(diff(segment_m(:, indexes.Relative_time)));
         
             for shiftID=1:numel(OUTPUT_SHIFT)
@@ -102,9 +123,10 @@ if (~isempty(i0) && ~isempty(i1))
                         movmean(segment_m(:, indexes.YawRate),20), ...
                         movmean(segment_m(:, indexes.LaneCurvature), 20), ...
                         movmean(segment_m(:, indexes.c3), 200)];
-                input = input(:,2:end);
-                input(:,1) = movmean(input(:,1),50);
                 input(:,2) = movmean(input(:,2),50);
+                input(:,3) = movmean(input(:,3),50);
+                
+                input = input(:,2:end);
                 inputRaw = input; % saved for further analysis
         
                 output = zeros(size(input,1),1);
@@ -207,7 +229,7 @@ if (~isempty(i0) && ~isempty(i1))
                 inputTimeSeries = (inputRaw-cin)./s_in;
                 outputTimeSeries = (outputRaw-cout)./s_out(shiftID);
                 [estimationTimeSeries, deviationTimeSeries] = gp(hyp_opt, infv, meanfunc, covInduced, likfunc, input_estimation, output_estimation, inputTimeSeries); % extract the mean and covarance functions
-                offsets{1}.offset = estimationTimeSeries*s_out+cout; offsets{1}.name = 'GPM'; offsets{1}.X = segment_m(:,indexes.X_abs); offsets{1}.marker = 'r';
+                offsets{1}.offset = estimationTimeSeries*s_out(1)+cout; offsets{1}.name = 'GPM'; offsets{1}.X = segment_m(:,indexes.X_abs); offsets{1}.marker = 'r';
                 offsets{2}.offset = outputRaw; offsets{2}.name = 'REAL'; offsets{2}.X = segment_m(:,indexes.X_abs); offsets{2}.marker = 'k';
         
                 f = plot_offsetPlots(segment_m,indexes,offsets, driverID);
@@ -224,7 +246,10 @@ if (~isempty(i0) && ~isempty(i1))
                 ETA(shiftID).hyp_opt = hyp_opt;
                 ETA(shiftID).input_estimation = input_estimation;
                 ETA(shiftID).output_estimation = output_estimation;
-                ETA(shiftID).normFactors = [cin, s_in, cout,s_out];
+                ETA(shiftID).normFactors.c_in = cin;
+                ETA(shiftID).normFactors.s_in = s_in;
+                ETA(shiftID).normFactors.c_out = cout;
+                ETA(shiftID).normFactors.s_out = s_out;
                 
                 fprintf("time of shift id %d is %f\n", shiftID, trun);        
             end    

@@ -62,7 +62,7 @@ set(f, 'defaultLegendInterpreter','latex');
 
 subplot(3,3,1); % induction plots
 for driverID=1:size(NRMS_ind_avgd,1)
-    plot(NRMS_ind_avgd(driverID,:), 'Marker', markers{driverID}, 'DisplayName', strcat("Driver", {' '}, num2str(driverID)));
+    plot([NRMS_ind_avgd(driverID,:) NRMS_ind_avgd(driver, 'Marker', markers{driverID}, 'DisplayName', strcat("Driver", {' '}, num2str(driverID)));
     grid on;
     hold on;
 end
@@ -72,13 +72,13 @@ title("Induction accuracy");
 ylabel(strcat(labelBase,"^{ind}$"));
 xlabel("$N$");
 
-xticks([1:1:size(NRMS_ind_avgd,2)]);
+xticks([1:1:size(NRMS_ind_avgd,2)+1]);
 xticklabels([]);
 
 set(gca,'TickLabelInterpreter','latex');
 
 subplot(3,3,4);
-boxplot(NRMS_ind_avgd(:,1:end));
+boxplot([NRMS_ind_avgd(:,1:end) NRMS_ind_avgd_ref(:,1:end)]);
 xticklabels([]);
 grid on;
 ylim(ylims);
@@ -92,7 +92,7 @@ set(gca,'TickLabelInterpreter','latex');
 
 subplot(3,3,2); % train data accuracy
 for driverID=1:size(NRMS_tr_avgd,1)
-    plot(NRMS_tr_avgd(driverID,:), 'Marker', markers{driverID}, 'DisplayName', strcat("Driver", {' '}, num2str(driverID)));
+    plot([NRMS_tr_avgd(driverID,:) NRMS_tr_avgd_ref(driverID,:)], 'Marker', markers{driverID}, 'DisplayName', strcat("Driver", {' '}, num2str(driverID)));
     grid on;
     hold on;
 end
@@ -103,13 +103,13 @@ ylabel(strcat(labelBase,"^{tr}$"));
 xlabel("$N$");
 ylim(ylims);
 
-xticks([1:1:size(NRMS_tr_avgd,2)]);
+xticks([1:1:size(NRMS_tr_avgd,2)+1]);
 xticklabels([]);
 
 set(gca,'TickLabelInterpreter','latex');
 
 subplot(3,3,5);
-boxplot(NRMS_tr_avgd(:,1:end));
+boxplot([NRMS_tr_avgd(:,1:end) NRMS_tr_avgd_ref]);
 xticklabels([]);
 grid on;
 ylim(ylims);
@@ -123,7 +123,7 @@ set(gca,'TickLabelInterpreter','latex');
 
 subplot(3,3,3); % validation data accuracy
 for driverID=1:size(NRMS_val_avgd,1)
-    plot(NRMS_val_avgd(driverID,:), 'Marker', markers{driverID}, 'DisplayName', strcat("Driver", {' '}, num2str(driverID)));
+    plot([NRMS_val_avgd(driverID,:) NRMS_val_avgd_ref(driverID,:)], 'Marker', markers{driverID}, 'DisplayName', strcat("Driver", {' '}, num2str(driverID)));
     grid on;
     hold on;
 end
@@ -134,13 +134,13 @@ ylabel(strcat(labelBase,"^{val}$"));
 xlabel("$N$");
 ylim(ylims);
 
-xticks([1:1:size(NRMS_val_avgd,2)]);
+xticks([1:1:size(NRMS_val_avgd,2)+1]);
 xticklabels([]);
 
 set(gca,'TickLabelInterpreter','latex');
 
 subplot(3,3,6);
-boxplot(NRMS_val_avgd(:,1:end));
+boxplot([NRMS_val_avgd(:,1:end) NRMS_val_avgd_ref]);
 xticklabels([]);
 grid on;
 ylim(ylims);
@@ -153,7 +153,7 @@ xlabel("$N$");
 set(gca,'TickLabelInterpreter','latex');
 
 subplot(3,1,3); % runtime plots
-boxplot(timeRun_avgd(:,1:end));
+boxplot([timeRun_avgd(:,1:end) timeRun_avgd_ref]);
 xticklabels(variables(1:end));
 grid on;
 
@@ -162,7 +162,7 @@ title("Run time");
 ylabel("$T_c(s)$");
 xlabel("$N$");
 
-xticks([1:1:size(timeRun_avgd,2)]);
+xticks([1:1:size([timeRun_avgd timeRun_avgd_ref],2)]);
 
 set(gca,'TickLabelInterpreter','latex');
 
