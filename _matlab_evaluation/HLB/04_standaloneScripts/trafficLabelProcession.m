@@ -1,6 +1,6 @@
 clear;
-pathToCsv = "C:\git\KDP\HLB_for_AV_MotionControl\02_Results\MassMeasurements\Dr022\Dr022_trafficLabelsSecs.xlsx";
-pathToMat = 'C:\git\KDP\HLB_for_AV_MotionControl\02_Results\MassMeasurements\Dr022\Dr022_62A_2024-10-17.mat_extended.mat';
+pathToCsv = "C:\git\KDP\HLB_for_AV_MotionControl\02_Results\MassMeasurements\Dr006\20241120\Dr006_trafficLabelsSecs.xlsx";
+pathToMat = 'C:\git\KDP\HLB_for_AV_MotionControl\02_Results\MassMeasurements\Dr006\20241120\Dr006_62A_2024_11-20.mat_extended.mat';
 
 %% Mapping of object types
 % 1 - normal, convoy-normal

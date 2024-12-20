@@ -20,7 +20,7 @@ N = length(P); % number of node points
 lengths = (corridor(:,1).^2+corridor(:,2).^2).^0.5;
 
 n = size(corridor,1);
-minStepDist = 10; % in meters
+minStepDist = 0; % in meters
 indeces = zeros(N+1,1);
 X = zeros(N+1,1);
 

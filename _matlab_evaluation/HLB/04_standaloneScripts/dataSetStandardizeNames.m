@@ -25,8 +25,9 @@ signalNames = ["VelocityX_ESP", "VelocityX"; ...
     "trafficInFront", "FrontTrafficType"; ...
     "q_T0", "Relative_time"];
 
-for i=1:length(matFiles)
-    a = load(fullfile(matFiles(i).folder, matFiles(i).name));
+for i=1:1 %length(matFiles)
+    %a = load(fullfile(matFiles(i).folder, matFiles(i).name));
+    a = load("C:\git\KDP\HLB_for_AV_MotionControl\02_Results\MassMeasurements\Dr006\20241120\Dr006_62A_2024_11-20.mat_extended_withTraffic.mat");
     if (isfield(a, "rawData"))
         a = a.rawData;
     elseif (isfield(a, "segment"))
@@ -41,7 +42,7 @@ for i=1:length(matFiles)
         end
     end
     data.Relative_time = data.Relative_time-data.Relative_time(1);
-    save(fullfile(matFiles(i).folder, matFiles(i).name), '-struct',  'data');
+    save("C:\git\KDP\HLB_for_AV_MotionControl\02_Results\MassMeasurements\Dr006\20241120\Dr006_62A_2024_11-20.mat_extended_withTraffic.mat", '-struct',  'data');
     
     clear data a
 end

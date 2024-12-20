@@ -48,7 +48,9 @@ end
 
 function [input,c,s] = normAndCentral(input)
     for i=1:size(input,2)
-         [input(:,i), c(i), s(i)] = normalize(input(:,i));
+        c(i) = mean(input(:,i));
+        s(i) = std(input(:,i));
+        input(:,i) = (input(:,i)-c(i))/s(i);
     end
 end
 

@@ -2,7 +2,15 @@
 % given segment_m. segment_ms is an array of struct containing the driving data
 % of multiple drivers. Config is a metadata struct containing information
 % about e.g., the plot folders
-close all; clear;
+close all; clear; clc;
+addpath(fullfile("library"));
+addpath(fullfile("library", "gpml-matlab-master"));
+addpath(fullfile("library", "gpml-matlab-master", "cov"));
+addpath(fullfile("library", "gpml-matlab-master", "inf"));
+addpath(fullfile("library", "gpml-matlab-master", "lik"));
+addpath(fullfile("library", "gpml-matlab-master", "mean"));
+addpath(fullfile("library", "gpml-matlab-master", "prior"));
+addpath(fullfile("library", "gpml-matlab-master", "util"));
 load('sparseGP\Dr008_Dr027_input_GP.mat');
 config.root = "./";
 
@@ -95,7 +103,7 @@ set(0,'DefaultFigureVisible','off');
 shiftOnOutputSelection = OUTPUT_SHIFT;  %shift the offset in time (positive means shift forward)
 p = RATIO_OF_TRAIN_VS_TOTAL; %percentage of evaluation data from entire dataset
 
-for driverID = 1:size(segments.segments,2)
+for driverID = 11:size(segments.segments,2)
     DRIVER_ID_IF_NOT_MERGED = driverID;
     segment = segments.segments(DRIVER_ID_IF_NOT_MERGED).segment;
     name = segments.segments(DRIVER_ID_IF_NOT_MERGED).name;

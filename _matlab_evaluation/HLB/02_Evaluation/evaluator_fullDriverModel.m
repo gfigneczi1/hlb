@@ -47,58 +47,64 @@ firstRun = true;
 
 switch SIMULATION_MODE
     case "SYNTHETIC_SIMULATION"
-        colors = ["r", "b", "c", "g", "k", "m", "r--", "b--", "c--"];
+        colors = ["r", "b", "c", "g", "k", "m", "r--", "b--", "c--", "g--", "k--", "m--", "r:","b:"];
         for segmentID = 1:length(segments.segments)
-            segment = segments.segments(segmentID).segment;
+            segment = segments.segments(4).segment;
             name = segments.segments(segmentID).name;
-            TC = name(end-5:end-4);
+            driverID = str2num(name(end-find(name(end:-1:1)=='_')+2:end-find(name(end:-1:1)=='.')));
             [~, segment_m, indexes] = prepareInputForPlanner(segment);
             modelMode = "kinematic";
             modelID = "gp";
-            
-            for driverID=3:4 % currently static as driver parameter read happens inside subfunction!
-                if (~firstRun)
-                    parameters.PARAMS.DriverID = driverID-1;
-                else
-                    parameters.PARAMS.DriverID = driverID;
-                end
-                %% GPM
-                if (~firstRun)
-                    [estimation, deviation, inputRaw] = gpGenerateEstimate(segment_m, indexes, [1 1 0 0 0 0 0]);
-                else
-                    [estimation, deviation, inputRaw] = gpGenerateEstimate(segment_m, indexes, zeros(1,7));
-                end
-                segment_m(:,end+1:end+10) = estimation;
-                indexes.GP_1 = size(segment_m,2)-9;
-                indexes.GP_10 = size(segment_m,2);
-                segment_m(:,end+1:end+10) = deviation;
-                indexes.errGP_1 = size(segment_m,2)-9;
-                indexes.errGP_10 = size(segment_m,2);
-                
-                globalStartIndex = 2; % minimum is 2, otherwise it fails!
-                globalStopIndex = size(segment_m,1);
-        
-                [path, ~, ~, ~, intentionPath] = pathGeneration();
-                corFine = corridorGeneration(0.5);
-                refFine = referenceGeneration(0.5);
-        
-                offsetPath = offsetCalculation(corFine, path);
-                offsetRef = offsetCalculation(corFine, refFine);
-        
-                offsets{driverID}.offset = offsetPath; offsets{driverID}.name = strcat('GPM-Dr', num2str(driverID)); offsets{driverID}.X = path(:,1); offsets{driverID}.marker = colors(driverID);
-                if (firstRun)
-                    firstRun = false;
-                end
+            if (~firstRun)
+                parameters.PARAMS.DriverID = driverID-1;
+            else
+                parameters.PARAMS.DriverID = driverID;
             end
-            f = plot_offsetPlotsExtended(segment_m,indexes,offsets,[], inputRaw);
-            temp_folder_path = "../../_temp";
-            plots_folder_name = "plots";
-            savefig(f, fullfile(temp_folder_path, plots_folder_name,...
-                                strcat('Resimulate_plots_syntheticData_TC', TC, '.fig')));
-            saveas(f, fullfile(temp_folder_path, plots_folder_name,...
-                            strcat('Resimulate_plots_syntheticData_TC', TC, '.png')));
-            close(f);
+            %% GPM
+            if (~firstRun)
+                [estimation, deviation, inputRaw] = gpGenerateEstimate(segment_m, indexes, [1 1 0 0 0 0 0], false);
+            else
+                % only static information with mean speed
+                [estimation, deviation, inputRaw] = gpGenerateEstimate(segment_m, indexes, [1 1 1 1 1 0 0], false);
+            end
+            segment_m(:,end+1:end+10) = estimation;
+            indexes.GP_1 = size(segment_m,2)-9;
+            indexes.GP_10 = size(segment_m,2);
+            segment_m(:,end+1:end+10) = deviation;
+            indexes.errGP_1 = size(segment_m,2)-9;
+            indexes.errGP_10 = size(segment_m,2);
+
+            globalStartIndex = 2; % minimum is 2, otherwise it fails!
+            globalStopIndex = size(segment_m,1);
+
+            segment_m(:,indexes.AccelerationX) = movmean(segment_m(:, indexes.AccelerationX), 20);
+            segment_m(:,indexes.VelocityX) = movmean(segment_m(:, indexes.VelocityX), 20);
+            segment_m(:,indexes.OncomingTrafficType) = movmean(segment_m(:, indexes.OncomingTrafficType), 50);
+            segment_m(:,indexes.FrontTrafficType) = movmean(segment_m(:, indexes.FrontTrafficType), 50);
+            segment_m(:,indexes.LaneCurvature) = movmean(segment_m(:, indexes.OncomingTrafficType), 20);
+            segment_m(:,indexes.c3) = movmean(segment_m(:, indexes.c3), 200);
+
+            [path, U, dY, ~, intentionPath, ~, corridorResampled] = pathGeneration();
+
+            corFine = corridorGeneration(0.5);
+            refFine = referenceGeneration(0.5);
+
+            offsetPath = offsetCalculation(corFine, path);
+            offsetRef = offsetCalculation(corFine, refFine);
+
+            offsets{driverID}.offset = offsetPath; offsets{driverID}.name = strcat('GPM-Dr', num2str(driverID)); offsets{driverID}.X = path(:,1); offsets{driverID}.marker = colors(driverID);
+%                 if (firstRun)
+%                     firstRun = false;
+%                 end
         end
+        f = plot_offsetPlotsExtended(segment_m,indexes,offsets,[], inputRaw);
+        temp_folder_path = "../../_temp";
+        plots_folder_name = "plots";
+        savefig(f, fullfile(temp_folder_path, plots_folder_name,...
+                            'Resimulate_plots_syntheticData.fig'));
+        saveas(f, fullfile(temp_folder_path, plots_folder_name,...
+                        'Resimulate_plots_syntheticData.png'));
+        close(f);
 
     case "SINGLE_SIMULATION"
         load('C:\database\KDP_HLB_GP\Dr008_Dr023_input_GP_fixedAcceleration.mat');
@@ -474,7 +480,7 @@ function offset = offsetCalculation(corFine, path)
         distances = ((corFine(:,1)-path(i,1)).^2+(corFine(:,2)-path(i,2)).^2).^0.5;
         closestIndex = find(distances == min(distances),1);
         clear distances
-        if (~isempty(closestIndex) && closestIndex(1,1)<=size(corFine,1)-2)
+        if (~isempty(closestIndex) && closestIndex(1,1)<=size(corFine,1)-2 && closestIndex(1,1)>2)
             % Transformation matrix
             T = [cos(theta) sin(theta); -sin(theta) cos(theta)];
             corFineLocal = (corFine(closestIndex(1,1)-2:closestIndex(1,1)+2,:) - path(i,:))*T';
@@ -556,7 +562,7 @@ function refFine = referenceGeneration(step)
     end
 end
 
-function [path, U, dY, plannedPath, intentionPath, vehicleStateMemory] = pathGeneration()
+function [path, U, dY, plannedPath, intentionPath, vehicleStateMemory, corridorResampled] = pathGeneration()
     global segment_m indexes globalStartIndex globalStopIndex vehicleState parameters metadata net dt dts modelMode x_k1
     % Entire model is calculated in the global frame!
     vehicleState = initVehicleState(segment_m, indexes, globalStartIndex, modelMode);
@@ -564,15 +570,20 @@ function [path, U, dY, plannedPath, intentionPath, vehicleStateMemory] = pathGen
     scenario = []; % initializing the scenario
     path(1,1) = vehicleState.X;
     path(1,2) = vehicleState.Y;
+    corridorResampled = [segment_m(globalStartIndex,indexes.corrX) segment_m(globalStartIndex,indexes.corrY)];
     replanCounter = 0;
     U = []; dY = []; plannedPath = []; dts = []; intentionPath = [];
     priorPath = zeros(1,2);
     u = zeros(3,1); dy = zeros(3,1); 
     x_k1 = zeros(4,1);
-    for i=globalStartIndex:globalStopIndex
-        
+    i = globalStartIndex;
+    finished = false;
+    routeLength = sum(sqrt(diff(segment_m(globalStartIndex:globalStopIndex,indexes.X_abs)).^2+diff(segment_m(globalStartIndex:globalStopIndex,indexes.Y_abs)).^2));
+    while (~finished)
+    %for i=globalStartIndex:globalStopIndex
+       
         % calculate time step
-        dT = segment_m(i, indexes.Relative_time) - segment_m(i-1, indexes.Relative_time);
+        dT = 0.1; %segment_m(i, indexes.Relative_time) - segment_m(i-1, indexes.Relative_time);
         
         % if there is a valid scenario ongoing, let's check, if there
         % is enough remaining part of it!
@@ -610,7 +621,7 @@ function [path, U, dY, plannedPath, intentionPath, vehicleStateMemory] = pathGen
             end
         end
         % from this point on, only calculate if scenario is valid!!
-        if (~isempty(scenario) && dT < 0.1)
+        if (~isempty(scenario) && dT <= 0.1)
             % curve policy: a model which takes the input data and outputs the
             % modified points
             % - cuts the same subsegment as done for the curve
@@ -621,21 +632,42 @@ function [path, U, dY, plannedPath, intentionPath, vehicleStateMemory] = pathGen
             % calculate the posterior path based on the curve policy
             posteriorPath = priorPath; %curvePolicy (scenario, indexes, priorPath, vehicleState);
             
-            % controller
-            % - outputs the desired steering angle
-            if (modelMode == "dynamic")
-                vehicleState = loadModel(vehicleState);
-                vehicleState = speedController(vehicleState);
+            % calculate vehicle position - supposing perfect controller
+            % calculate lane orientation
+            theta = atan(diff(posteriorPath(1:2,2))/diff(posteriorPath(1:2,1)));
+            if (diff(posteriorPath(1:2,1)) < 0 && diff(posteriorPath(1:2,2)) < 0)
+                % third quarter plane
+                theta = theta - pi();
+            elseif (diff(posteriorPath(1:2,1)) < 0 && diff(posteriorPath(1:2,2)) > 0)
+                % second quarter plane
+                theta = theta + pi();
             end
+            % converting the posteriorPath to local coordinates
+            T = [cos(theta) sin(theta); -sin(theta) cos(theta)];
+            posteriorLocalPath = (posteriorPath - [vehicleState.X vehicleState.Y])*T';
+            corridorLocally = ([segment_m(:, indexes.corrX) segment_m(:,indexes.corrY)] - [vehicleState.X vehicleState.Y])*T';
 
-            try
-            vehicleState.steeringAngle = controller(posteriorPath, vehicleState); 
-            catch
-                i;
-            end
+            dispDuringOneCycle = vehicleState.vx*dT;
+            Y = spline(posteriorLocalPath(:,1), posteriorLocalPath(:,2), dispDuringOneCycle);
+            Ycorridor = spline(corridorLocally(:,1), corridorLocally(:,2), dispDuringOneCycle);
 
-            % vehicle model
-            vehicleState = vehicleModel(vehicleState, dT, modelMode, parameters.vehicleParameters);
+            % interpolating new position
+            globalNewPoint = [dispDuringOneCycle Y]*T+[vehicleState.X vehicleState.Y];
+            globalNewCorridorPoint = [dispDuringOneCycle Ycorridor]*T+[vehicleState.X vehicleState.Y];
+            
+            vehicleState.X = globalNewPoint(1);
+            vehicleState.Y = globalNewPoint(2);
+            vehicleState.theta = theta;
+
+            % calculating road curvature
+            c = polyfit(posteriorLocalPath(:,1), posteriorLocalPath(:,2), 3);
+            roadCurvature = 2*c(2) + 6*vehicleState.X*c(1);
+
+            % calculating yaw-rate based on steering angle
+            vehicleState.yawRate = roadCurvature * vehicleState.vx;
+            vehicleState.vy = 0;
+            vehicleState.ax = 0;
+            vehicleState.ay = vehicleState.vx*vehicleState.yawRate;
             
             % metdata update
             metadata.pathValidity(i) = 1;
@@ -651,6 +683,7 @@ function [path, U, dY, plannedPath, intentionPath, vehicleStateMemory] = pathGen
             [vehicleState, nearestIndex] = setVehiclePositionToNearest(segment_m, indexes, vehicleState);
             if (isempty(nearestIndex))
                 disp('Measurement is corrupt, stopping simulation');
+                finished = true;
                 break;
             end
             replan = 1;
@@ -659,10 +692,16 @@ function [path, U, dY, plannedPath, intentionPath, vehicleStateMemory] = pathGen
             priorPath = path(end,:);
             posteriorPath = priorPath;
         end
+        pathLength = sum(sqrt(diff(path(:,1)).^2+diff(path(:,2)).^2));
         path = [path; [vehicleState.X vehicleState.Y]];
         intentionPath = [intentionPath; priorPath(1,:)];
         plannedPath = [plannedPath; posteriorPath(1,:)];
+        corridorResampled = [corridorResampled; globalNewCorridorPoint];
         vehicleStateMemory{i} = vehicleState;
+        if (pathLength >= routeLength || i >= globalStopIndex)
+            finished = true;
+        end
+        i = i+1;
     end
 end
 
@@ -859,7 +898,7 @@ if (mode=="kinematic")
     vehicleState.Y = segment_m(index, indexes.Y_abs);
     vehicleState.theta = segment_m(index, indexes.theta_calc);
     vehicleState.yawRate = segment_m(index, indexes.YawRate);
-    vehicleState.vx = segment_m(index, indexes.VelocityX);
+    vehicleState.vx = 18; %segment_m(index, indexes.VelocityX);
     vehicleState.vy = 0;
     vehicleState.ax = 0;
     vehicleState.ay = vehicleState.vx*vehicleState.yawRate;
@@ -1067,14 +1106,56 @@ function [path, u, dy] = groundTruth (scenario, indexes, previousPath, filtered)
     path = pathPlannerFrame*Tplanner + plannerFrame(1:2);
 end
 
-function [estimation, deviation, inputRaw] = gpGenerateEstimate(segment_m, indexes, eliminatedInputs)
+function [input, inputRaw, outputRaw, c_out, s_out, c_in, s_in] = prepareDataLive(segment_m, indexes, PARAMS)
+     % input array
+     input = [segment_m(:, indexes.OncomingTrafficType), ...
+                segment_m(:, indexes.FrontTrafficType), ...
+                segment_m(:, indexes.VelocityX), ...
+                segment_m(:, indexes.AccelerationX), ...
+                segment_m(:, indexes.YawRate), ...
+                segment_m(:, indexes.LaneCurvature), ...
+                segment_m(:, indexes.c3)];
+    
+    inputRaw = input;
+    
+    % SHUFFLE
+    N = size(input,1);
+    shuffledIndeces = randperm(N);
+    input = input(shuffledIndeces,:);
+
+    % LIMIT DATA IF NEEDED
+    % this is done before norm and central
+    input = input(1:min(size(input,1),PARAMS.MAXIMUM_INPUT_SIZE),:);
+
+    % NORM AND CENTRAL
+    [input, c_in, s_in] = normAndCentral(input);
+end
+
+function [estimation, deviation, inputRaw] = gpGenerateEstimate(segment_m, indexes, eliminatedInputs, eliminateOffset)
 global parameters
     %% step 0: generate input data
-    [~, ~, inputRaw, outputRaw] = prepareData(segment_m, indexes, parameters.PARAMS);
+    [~, inputRaw] = prepareDataLive(segment_m, indexes, parameters.PARAMS);
+    
+    for inputId=1:length(eliminatedInputs)
+        if (eliminatedInputs(inputId)==1)
+            if (inputId < 3)
+                % 1-2 channel is for traffic
+                inputRaw(:,inputId) = 0;
+            elseif (inputId < 4)
+                % 3 channel is for speed
+                
+            elseif (inputId < 5)
+                % 4 channel is for acceleration
+                inputRaw(:, inputId) = 0;
+            elseif (inputId < 6)
+                % 5 channel is for yawrate
+            end
+        end
+    end
     
     %% step 1: parameter loading
     % read the learnt data from previous runs
-    pathToParams = "C:\git\KDP\publications\GP\results\sparseGP_fixedAcceleration\kpis";
+    pathToParams = "C:\git\KDP\publications\GP\results\sparseGP_fixedAcceleration\0_chosenParams";
     paramGP = dir(fullfile(pathToParams,"ETA_*"));
 
     for fileID = 1:length(paramGP)
@@ -1107,11 +1188,6 @@ global parameters
     for i=1:size(inputRaw,2)
         input(:,i) = (inputRaw(:,i)-c_in(i))/s_in(i);
     end
-    for i=1:size(outputRaw,2)
-        output(:,i) = (outputRaw(:,i)-c_out(i))/s_out(i);
-    end
-
-    input(:,eliminatedInputs==1) = 0;
 
     %% step 4: generate output
     meanfunc = [];       % Start with a zero mean prior
@@ -1127,8 +1203,12 @@ global parameters
 
     %% step 5: node point calculation
     for i=1:size(estimationGP,2)
-        estimation(:,i) = estimationGP(:,i)*s_out(i)+c_out(i);
-        deviation(:,i) = deviationGP(:,i)*s_out(i)+c_out(i);
+        estimation(:,i) = estimationGP(:,i)*s_out(i);
+        deviation(:,i) = deviationGP(:,i)*s_out(i);
+        if (~eliminateOffset)
+            estimation(:,i) = estimation(:,i)+c_out(i);
+            deviation(:,i) = deviation(:,i)+c_out(i);
+        end
     end
 end
 
@@ -1197,7 +1277,7 @@ end
 end
 
 function [path, u, dy] = gpModel (scenario, indexes, previousPath)
-    global parameters
+    global parameters vehicleState
     % This function calculates the node points in front of the vehicle,
     % then applies the driver model to calculate the offset to the
     % mid-lane. Finally, a curve is fit onto the node points to result the
@@ -1207,6 +1287,24 @@ function [path, u, dy] = gpModel (scenario, indexes, previousPath)
     % [2] previous path - the previously planned trajectory, used for
     % initializing the new trajectory
     u = []; dy=[];
+
+    %% generate GP output
+    syntheticScenario = [scenario(1, indexes.OncomingTrafficType), ...
+                            scenario(1, indexes.FrontTrafficType), ...
+                            vehicleState.vx, ...
+                            vehicleState.ax, ...
+                            vehicleState.yawRate, ... 
+                            scenario(1, indexes.LaneCurvature), ...
+                            scenario(1, indexes.c3)];
+    indexesSynthetic.OncomingTrafficType = 1;
+    indexesSynthetic.FrontTrafficType = 2;
+    indexesSynthetic.VelocityX = 3;
+    indexesSynthetic.AccelerationX = 4;
+    indexesSynthetic.YawRate = 5;
+    indexesSynthetic.LaneCurvature = 6;
+    indexesSynthetic.c3 = 7;
+
+    estimation = gpGenerateEstimate(syntheticScenario, indexesSynthetic, [1 1 1 1 1 0 0], false);
 
     %% step 1: path planning
     % finding the closest point in the scenario
@@ -1240,9 +1338,13 @@ function [path, u, dy] = gpModel (scenario, indexes, previousPath)
         scenario(indeces(2:end) + nearestPoint(1,1),indexes.theta_calc)- ...
         plannerFrame(3);
     
+    dy = scenario(1,indexes.GP_1:indexes.GP_10)'.*cos(theta_nominal);
+    
     % calculating final node points
-    Y = Y_nominal + scenario(1,indexes.GP_1:indexes.GP_10)'.*cos(theta_nominal);
-    X = X_nominal - scenario(1,indexes.GP_1:indexes.GP_10)'.*sin(theta_nominal);
+    Y = Y_nominal + estimation(1,:)'.*cos(theta_nominal);
+    X = X_nominal + estimation(1,:)'.*sin(theta_nominal);
+    %Y = Y_nominal + scenario(1,indexes.GP_1:indexes.GP_10)'.*cos(theta_nominal);
+    %X = X_nominal - scenario(1,indexes.GP_1:indexes.GP_10)'.*sin(theta_nominal);
     theta = theta_nominal;
     
     % extending with origin of the planner frame
@@ -1253,10 +1355,11 @@ function [path, u, dy] = gpModel (scenario, indexes, previousPath)
     pathY = zeros(size(refX));
     n = 3;
     n = min(n, length(X)-1);
-    c = polyfit(X(2:end),Y(2:end),n);
-    for i=1:n+1
-        pathY = pathY + c(i)*refX.^(n-(i-1));
-    end
+    pathY = fitPolynomialWithConstraints(X,Y, refX);
+    %c = polyfit(X(2:end),Y(2:end),n);
+%     for i=1:n+1
+%         pathY = pathY + c(i)*refX.^(n-(i-1));
+%     end
     pathPlannerFrame = [refX' pathY'];
     %[pathPlannerFrame, ~] = trajectory_planner([X;Y;theta], indeces, refX',0);
     
@@ -2025,4 +2128,48 @@ function [path, U, dy] = eldm (scenario, indexes, previousPath, P_npDistances, P
     
     %% step 5: converting to global frame
     path = pathPlannerFrame*Tplanner + plannerFrame(1:2);
+end
+
+function yFine = fitPolynomialWithConstraints(x,y, xFine)
+
+    x0 = x(1);
+    y0 = y(1);
+    % 'C' is the Vandermonde matrix for 'x'
+    m = 3; % Degree of polynomial to fit
+    V(:,m+1) = ones(size(x,1),1,class(x));
+    for j = m:-1:1
+       V(:,j) = x(:,1).*V(:,j+1);
+    end
+    C = V;
+    % 'd' is the vector of target values, 'y'.
+    d = y(:,1);
+    %%
+    % There are no inequality constraints in this case, i.e.,
+    A = [];
+    b = [];
+    %%
+    % We use linear equality constraints to force the curve to hit the required point. In
+    % this case, 'Aeq' is the Vandermoonde matrix for 'x0'
+    Aeq = x0.^(m:-1:0);
+    % and 'beq' is the value the curve should take at that point
+    beq = y0;
+    %%
+    p = lsqlin( C, d, A, b, Aeq, beq );
+    %%
+    % We can then use POLYVAL to evaluate the fitted curve
+    yFine = polyval( p, xFine );
+
+end
+
+function theta = calculateOrientation(x,y)
+    theta = atan(diff(y)./diff(x)); theta = [theta; theta(end)];
+    % check quarterplane 2 and 3 conditions
+    dx = diff(x); dx = [dx; dx(end)];
+    dy = diff(y); dy = [dy; dy(end)];
+    
+    qp2 = (dx < 0) & (dy > 0); % the division in the atan function is negative, therefore the angle is negative - compensation of +pi() is needed
+    qp3 = (dx < 0) & (dy < 0); % the division in the atan function is positive, therefore the angle is positive - compensation of -pi() is needed
+    
+    theta(qp2) = theta(qp2)+pi();
+    theta(qp3) = theta(qp3)-pi();
 end

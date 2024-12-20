@@ -1,6 +1,6 @@
 close all; clear; clc;
 
-load('C:\database\KDP_HLB_GP\Dr008_Dr023_input_GP_fixedAcceleration.mat');
+load('C:\database\KDP_HLB_GP\Dr008_Dr027_input_GP.mat');
 
 for i=1:length(segments.segments)
     segment = segments.segments(i).segment;

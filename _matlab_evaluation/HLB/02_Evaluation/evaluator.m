@@ -37,7 +37,7 @@ switch config.evaluation_profile
     case "DriverModelAnalysis"
         evaluator_driverModelAnalysis(segments,config);
     case "FullDriverModel"
-        evaluator_fullDriverModel(segments,config);
+        evaluator_fullDriverModel_GPProblem(segments,config);
     case "DriverModelLearning"
         evaluator_driverModelLearning(segments,config);
     case "MapValidationJkk"
