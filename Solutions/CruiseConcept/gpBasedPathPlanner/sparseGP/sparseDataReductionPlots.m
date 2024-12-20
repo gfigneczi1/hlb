@@ -42,8 +42,8 @@ for i=1:length(matFiles)
         for shiftID = 1:numel(data.KPI)
             NRMS_val_ref(driverID, 1, shiftID) = data.KPI{shiftID}(2);
             NRMS_tr_ref(driverID, 1, shiftID) = data.KPI{shiftID}(6);
-            NRMS_ind_ref(driverID, 1, shiftID) = data.KPI{shiftID}(27);
-            timeRun_ref(driverID, 1, shiftID) = data.KPI{shiftID}(29);
+            NRMS_ind_ref(driverID, 1, shiftID) = data.KPI{shiftID}(19);
+            timeRun_ref(driverID, 1, shiftID) = data.KPI{shiftID}(21);
         end
     end
 end

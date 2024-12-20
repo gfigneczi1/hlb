@@ -1,5 +1,5 @@
 close all; clc; clear;
-load('C:\database\KDP_HLB_GP\Dr008_Dr023_input_GP_fixedAcceleration.mat');
+load('C:\database\KDP_HLB_GP\Dr008_Dr027_input_GP.mat');
 
 addpath(fullfile("..", "library"));
 addpath(fullfile("..", "library", "gpml-matlab-master"));
@@ -22,17 +22,17 @@ PARAMS.EPOCH_NUMBER = 10;
 PARAMS.GREEDY_REDUCTION = true;
 PARAMS.LDM_NP = [10, 39, 136];
 PARAMS.DriverID = 4;
-PARAMS.InductionID = 4;
+PARAMS.InductionID = 6;
 PARAMS.FILTER_OUTPUT = false;
 
-for driverID=1:8
+for driverID=4:4
     PARAMS.DriverID = driverID;
     segment = segments.segments(driverID).segment;
     name = segments.segments(driverID).name;
     [~, segment_m, indexes] = prepareInputForPlanner(segment);
     [estimation, deviation, inputRaw, outputRaw, input, output] = gpGenerateEstimate(segment_m, indexes, PARAMS);
 
-    for j=1:size(estimation,2)
+    for j=1:1 %size(estimation,2)
         plotDeviationPlots(estimation(:,j), deviation(:,j), outputRaw(:,j), j, driverID, segment_m(:,indexes.X_abs));
     end
     
@@ -44,7 +44,7 @@ function [estimation, deviation, inputRaw, outputRaw, input, output] = gpGenerat
     
     %% step 1: parameter loading
     % read the learnt data from previous runs
-    pathToParams = "C:\git\KDP\publications\GP\results\sparseGP_fixedAcceleration\kpis";
+    pathToParams = "C:\git\KDP\publications\GP\results\sparseGP_fixedAcceleration\12drivers\kpis";
     paramGP = dir(fullfile(pathToParams,"ETA_*"));
 
     for fileID = 1:length(paramGP)

@@ -36,12 +36,12 @@ RATIO_OF_TRAIN_VS_TOTAL = 0.7;
 MAXIMUM_PREVIEW_DISTANCE = 150; % from within preview information is extracted, unit: m
 OUTPUT_SHIFT = linspace(15,MAXIMUM_PREVIEW_DISTANCE,10); %possible values: scalar number or array e.g., linspace(15,MAXIMUM_PREVIEW_DISTANCE,10);
 INDUCED_SIZE = 100; % only applicable if ITERATE_INDUCTION is FALSE
-inductionSizePool = [10, 20, 50];%, 100, 300, 500, 1000]; % only applicable if ITERATE_INDUCTION is TRUE
+inductionSizePool = [10, 20, 50, 100, 300, 500, 1000]; % only applicable if ITERATE_INDUCTION is TRUE
 
 variables = ["t_{ot}", "f_{ot}", "v_x", "a_x", "\omega", "\kappa", "d\kappa"];
 
 if (isempty(DRIVER_ID))
-    i0 = 9; i1 = length(segments.segments);
+    i0 = 1; i1 = length(segments.segments);
     if (i0~=1)
         fprintf("WARNING: DRIVER ID 0 is not zero, simulating only from driver 3!!!\n");
     end
@@ -89,7 +89,7 @@ if (~isempty(i0) && ~isempty(i1))
     p = RATIO_OF_TRAIN_VS_TOTAL; %percentage of evaluation data from entire dataset
     
     if (ITERATE_INDUCTION)
-        indSize0 = 2; indSize1 = 2; %length(inductionSizePool);
+        indSize0 = 5; indSize1 = 5; %length(inductionSizePool);
     else
         indSize0 = 1; indSize1 = 1;
     end
@@ -115,14 +115,15 @@ if (~isempty(i0) && ~isempty(i1))
                 tic;
                 dx = segment_m(:, indexes.VelocityX)*dT;
                 shiftOnOutput = [1:1:size(segment_m(:,indexes.Relative_time),1)]'+floor(OUTPUT_SHIFT(shiftID)./dx);
+                
                 input = [segment_m(:, indexes.OncomingVehicleTimeToPass), ...
                         segment_m(:, indexes.OncomingTrafficType), ...
                         segment_m(:, indexes.FrontTrafficType), ...
-                        segment_m(:, indexes.VelocityX), ...
                         movmean(segment_m(:, indexes.AccelerationX),20), ...
                         movmean(segment_m(:, indexes.YawRate),20), ...
                         movmean(segment_m(:, indexes.LaneCurvature), 20), ...
                         movmean(segment_m(:, indexes.c3), 200)];
+
                 input(:,2) = movmean(input(:,2),50);
                 input(:,3) = movmean(input(:,3),50);
                 
